@@ -6,10 +6,11 @@ export const INITIAL_USER: User = {
   email: 'ramiro@nuga.network',
   role: 'owner',
   title: 'Propietario & Director Ejecutivo',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  isDemo: true
 };
 
-export const INITIAL_ADMIN_ITEMS: AdminItem[] = [
+const RAW_ADMIN_ITEMS: AdminItem[] = [
   {
     id: 'adm-01',
     title: 'Renovación de Contrato de Arrendamiento de Predio Torre Sur',
@@ -108,39 +109,44 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     agentId: 'director',
     title: 'Dirección General & Resumen de Operaciones',
     lastMessageTimestamp: 'Hace 2 minutos',
-    unreadCount: 1
+    unreadCount: 1,
+    isDemo: true
   },
   {
     id: 'conv-operaciones',
     agentId: 'operaciones',
     title: 'Monitoreo WISP & Auditoría MikroTik',
     lastMessageTimestamp: 'Hace 8 minutos',
-    unreadCount: 2
+    unreadCount: 2,
+    isDemo: true
   },
   {
     id: 'conv-nugacore',
     agentId: 'nugacore',
     title: 'Ingeniería NugaCore & CI/CD',
     lastMessageTimestamp: 'Hace 25 minutos',
-    unreadCount: 0
+    unreadCount: 0,
+    isDemo: true
   },
   {
     id: 'conv-marketing',
     agentId: 'marketing',
     title: 'Estrategia de Campañas & Storyboards',
     lastMessageTimestamp: 'Hace 45 minutos',
-    unreadCount: 0
+    unreadCount: 0,
+    isDemo: true
   },
   {
     id: 'conv-administracion',
     agentId: 'administracion',
     title: 'Acuerdos, Minutas & Seguimiento',
     lastMessageTimestamp: 'Hace 1 hora',
-    unreadCount: 0
+    unreadCount: 0,
+    isDemo: true
   }
 ];
 
-export const INITIAL_MESSAGES: Record<string, Message[]> = {
+const RAW_MESSAGES: Record<string, Message[]> = {
   'conv-director': [
     {
       id: 'm-dir-1',
@@ -321,7 +327,7 @@ export const INITIAL_AUDIT_EVENTS: AuditEvent[] = Array.from({ length: 50 }).map
     },
     {
       actorType: 'agent' as const,
-      actorName: 'Especialista Operaciones WISP',
+      actorName: 'Operaciones',
       action: 'Auditoría de Seguridad RouterOS',
       actionType: 'executed' as const,
       resourceType: 'router' as const,
@@ -335,7 +341,7 @@ export const INITIAL_AUDIT_EVENTS: AuditEvent[] = Array.from({ length: 50 }).map
     },
     {
       actorType: 'agent' as const,
-      actorName: 'Especialista Marketing',
+      actorName: 'Marketing',
       action: 'Generación de Activos Audiovisuales (Simulado)',
       actionType: 'executed' as const,
       resourceType: 'campaign' as const,
@@ -349,7 +355,7 @@ export const INITIAL_AUDIT_EVENTS: AuditEvent[] = Array.from({ length: 50 }).map
     },
     {
       actorType: 'agent' as const,
-      actorName: 'Especialista Operaciones WISP',
+      actorName: 'Operaciones',
       action: 'Detección y Apertura de Incidente',
       actionType: 'requested' as const,
       resourceType: 'tower' as const,
@@ -391,7 +397,7 @@ export const INITIAL_AUDIT_EVENTS: AuditEvent[] = Array.from({ length: 50 }).map
     },
     {
       actorType: 'agent' as const,
-      actorName: 'Especialista NugaCore',
+      actorName: 'NugaCore',
       action: 'Ejecución de Suite de Pruebas Unitarias',
       actionType: 'executed' as const,
       resourceType: 'system' as const,
@@ -405,7 +411,7 @@ export const INITIAL_AUDIT_EVENTS: AuditEvent[] = Array.from({ length: 50 }).map
     },
     {
       actorType: 'agent' as const,
-      actorName: 'Especialista Administración',
+      actorName: 'Administración',
       action: 'Registro de Minuta y Factura Informativa',
       actionType: 'executed' as const,
       resourceType: 'deliverable' as const,
@@ -437,9 +443,26 @@ export const INITIAL_AUDIT_EVENTS: AuditEvent[] = Array.from({ length: 50 }).map
     humanExplanation: template.humanExplanation,
     correlationId: `CORR-${1000 + index}`,
     relatedApprovalId: index % 4 === 0 ? `APP-${200 + index}` : undefined,
-    jsonPayload: template.jsonPayload
+    jsonPayload: template.jsonPayload,
+    isDemo: true
   };
 });
+
+export const INITIAL_ADMIN_ITEMS: AdminItem[] = RAW_ADMIN_ITEMS.map(item => ({
+  ...item,
+  isDemo: true
+}));
+
+export const INITIAL_MESSAGES: Record<string, Message[]> = Object.fromEntries(
+  Object.entries(RAW_MESSAGES).map(([convId, messages]) => [
+    convId,
+    messages.map(msg => ({
+      ...msg,
+      isDemo: true,
+      toolCalls: msg.toolCalls?.map(tc => ({ ...tc, isDemo: true }))
+    }))
+  ])
+);
 
 export const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
@@ -451,7 +474,8 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     priority: 'urgente',
     read: false,
     linkScreen: 'decisiones',
-    linkItemId: 'dec-001'
+    linkItemId: 'dec-001',
+    isDemo: true
   },
   {
     id: 'notif-2',
@@ -462,7 +486,8 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     priority: 'alta',
     read: false,
     linkScreen: 'operaciones-wisp',
-    linkItemId: 'inc-001'
+    linkItemId: 'inc-001',
+    isDemo: true
   },
   {
     id: 'notif-3',
@@ -473,7 +498,8 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     priority: 'media',
     read: true,
     linkScreen: 'marketing',
-    linkItemId: 'med-01'
+    linkItemId: 'med-01',
+    isDemo: true
   },
   {
     id: 'notif-4',
@@ -484,7 +510,8 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     priority: 'media',
     read: true,
     linkScreen: 'entregables',
-    linkItemId: 'deliv-01'
+    linkItemId: 'deliv-01',
+    isDemo: true
   }
 ];
 
@@ -496,8 +523,9 @@ export const INITIAL_SETTINGS: AppSettings = {
   retainLogsDays: 90,
   telegramNotificationsSimulated: true,
   maxAgentExecutionMinutes: 45,
-  hermesEngineStatus: 'online',
+  hermesEngineStatus: 'Operativo',
   mcpServerStatus: 'connected_demo',
   mikrotikApiStatus: 'mock_sandbox',
-  higgsfieldApiStatus: 'mock_sandbox'
+  higgsfieldApiStatus: 'mock_sandbox',
+  isDemo: true
 };

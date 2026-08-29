@@ -403,7 +403,57 @@ ${decision.exactChangeDiff || decision.proposal}
             <div className="p-4 rounded-xl bg-[#111D27] border border-rose-500/40 space-y-3.5 animate-in fade-in">
               <div className="flex items-center gap-2 text-rose-400 font-bold text-xs border-b border-[#1E293B] pb-2">
                 <XCircle className="w-4 h-4" />
-                <span>Rechazo de Propuesta</span>
+                <span>Rechazo y Gestión de la Propuesta</span>
+              </div>
+
+              {/* Quick Actions / Options */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-[#E0E7FF] block text-xs">
+                  Acción alternativa sugerida:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('info')}
+                    className="p-2 rounded-lg bg-[#0A141D] hover:bg-amber-950/30 border border-[#1E293B] hover:border-amber-500/50 text-left text-xs text-amber-300 transition-colors"
+                  >
+                    <span className="font-bold block text-[11px]">Solicitar más info</span>
+                    <span className="text-[10px] text-[#94A3B8]">Pedir detalles</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeDecisionAction(decision.id, 'postpone', commentText || 'Pospuesta para posterior revisión');
+                      closeModal();
+                    }}
+                    className="p-2 rounded-lg bg-[#0A141D] hover:bg-purple-950/30 border border-[#1E293B] hover:border-purple-500/50 text-left text-xs text-purple-300 transition-colors"
+                  >
+                    <span className="font-bold block text-[11px]">Posponer</span>
+                    <span className="text-[10px] text-[#94A3B8]">Diferir análisis</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeDecisionAction(decision.id, 'adjust_scope', commentText || 'Ajustar alcance solicitado');
+                      closeModal();
+                    }}
+                    className="p-2 rounded-lg bg-[#0A141D] hover:bg-sky-950/30 border border-[#1E293B] hover:border-sky-500/50 text-left text-xs text-sky-300 transition-colors"
+                  >
+                    <span className="font-bold block text-[11px]">Ajustar alcance</span>
+                    <span className="text-[10px] text-[#94A3B8]">Modificar límites</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeDecisionAction(decision.id, 'reject', commentText || 'Propuesta descartada');
+                      closeModal();
+                    }}
+                    className="p-2 rounded-lg bg-[#0A141D] hover:bg-rose-950/30 border border-[#1E293B] hover:border-rose-500/50 text-left text-xs text-rose-300 transition-colors"
+                  >
+                    <span className="font-bold block text-[11px]">Descartar</span>
+                    <span className="text-[10px] text-[#94A3B8]">Archivar rechazo</span>
+                  </button>
+                </div>
               </div>
 
               {isHighRiskDecision ? (
@@ -413,7 +463,7 @@ ${decision.exactChangeDiff || decision.proposal}
                     <span>Confirmación de Rechazo Reforzada:</span>
                   </div>
                   <p className="text-[#E0E7FF] text-xs leading-relaxed">
-                    Escribe la siguiente frase para formalizar el rechazo en la bitácora inmutable:
+                    Escribe la siguiente frase para formalizar el rechazo en la bitácora local DEMO:
                   </p>
                   <div className="p-2 rounded-lg bg-[#0A141D] border border-rose-500/40 flex items-center justify-between gap-2">
                     <code className="text-rose-300 font-mono font-bold text-xs sm:text-sm select-all">

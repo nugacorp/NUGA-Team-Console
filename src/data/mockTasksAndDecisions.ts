@@ -1,6 +1,6 @@
 import { Task, Decision } from '../types';
 
-export const INITIAL_TASKS: Task[] = [
+const RAW_TASKS: Task[] = [
   {
     id: 'task-101',
     code: 'TSK-101',
@@ -25,7 +25,7 @@ export const INITIAL_TASKS: Task[] = [
     comments: [
       {
         id: 'c1',
-        authorName: 'Especialista Operaciones WISP',
+        authorName: 'Operaciones',
         isAgent: true,
         agentRole: 'operaciones',
         timestamp: 'Hace 40 minutos',
@@ -572,7 +572,7 @@ export const INITIAL_TASKS: Task[] = [
   }
 ];
 
-export const INITIAL_DECISIONS: Decision[] = [
+const RAW_DECISIONS: Decision[] = [
   {
     id: 'dec-001',
     code: 'DEC-001',
@@ -833,3 +833,16 @@ Radio Local (Torre Norte): frequency=5680 width=40MHz`,
     createdAt: '2026-08-27'
   }
 ];
+
+export const INITIAL_TASKS: Task[] = RAW_TASKS.map(task => ({
+  ...task,
+  isDemo: true,
+  attachments: task.attachments?.map(att => ({ ...att, isDemo: true })),
+  runs: task.runs?.map(run => ({ ...run, isDemo: true })),
+  comments: task.comments?.map(comment => ({ ...comment, isDemo: true }))
+}));
+
+export const INITIAL_DECISIONS: Decision[] = RAW_DECISIONS.map(decision => ({
+  ...decision,
+  isDemo: true
+}));

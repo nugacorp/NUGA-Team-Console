@@ -39,7 +39,18 @@ export const ResumenEjecutivoScreen: React.FC = () => {
   const totalClients = towers.reduce((acc, t) => acc + t.connectedClients, 0);
 
   return (
-    <div id="screen-resumen-ejecutivo" className="space-y-4 pb-16 animate-in fade-in duration-200">
+    <div id="screen-resumen" className="space-y-4 pb-16 animate-in fade-in duration-200">
+      {/* Top Banner: DEMO Mode Notice */}
+      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono font-bold text-blue-400">
+            DEMO
+          </span>
+          <span>Entorno de simulación de gobernanza. Datos locales y operaciones en modo sandbox seguro.</span>
+        </div>
+        <span className="text-[10px] font-mono text-slate-500 hidden sm:inline">5 Agentes Especialistas</span>
+      </div>
+
       {/* 4 Core Top Bento KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Bento Card 1: Estado General */}
@@ -85,17 +96,20 @@ export const ResumenEjecutivoScreen: React.FC = () => {
             <p className="text-[10px] text-[#94A3B8] mt-0.5">En progreso / revisión</p>
           </div>
           <div className="flex -space-x-2">
-            <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Director Hermes">
-              H
+            <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Director">
+              D
             </div>
-            <div className="w-7 h-7 rounded-full bg-emerald-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Ing. NugaCore">
+            <div className="w-7 h-7 rounded-full bg-emerald-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="NugaCore">
               N
             </div>
-            <div className="w-7 h-7 rounded-full bg-purple-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Especialista Marketing">
+            <div className="w-7 h-7 rounded-full bg-amber-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Operaciones">
+              O
+            </div>
+            <div className="w-7 h-7 rounded-full bg-purple-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Marketing">
               M
             </div>
-            <div className="w-7 h-7 rounded-full bg-amber-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Ops WISP">
-              W
+            <div className="w-7 h-7 rounded-full bg-rose-600 border-2 border-[#111D27] text-[10px] font-bold flex items-center justify-center text-white" title="Administración">
+              A
             </div>
           </div>
         </div>
@@ -108,7 +122,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
           <div>
             <p className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold mb-1">Decisiones</p>
             <p className="text-2xl font-mono font-bold text-orange-400 tracking-tight">
-              {pendingDecisions.length < 10 ? `0${pendingDecisions.length}` : pendingDecisions.length}
+              {pendingDecisions.length}
             </p>
             <p className="text-[10px] text-[#94A3B8] mt-0.5">
               {criticalDecisions.length > 0 ? `${criticalDecisions.length} críticas` : 'Evaluación requerida'}
@@ -159,7 +173,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
                       </span>
                       <h4 className="text-xs md:text-sm font-bold text-white truncate">{decision.title}</h4>
                     </div>
-                    <p className="text-[11px] text-[#94A3B8] line-clamp-1">{decision.summary}</p>
+                    <p className="text-[11px] text-[#94A3B8] line-clamp-1">{decision.proposal || decision.situation}</p>
                   </div>
 
                   <div className="text-right px-2 hidden sm:block shrink-0">

@@ -3,14 +3,14 @@ import { AgentProfile, Project } from '../types';
 export const INITIAL_AGENTS: AgentProfile[] = [
   {
     id: 'director',
-    name: 'Director IA',
-    roleTitle: 'Coordinador Ejecutivo & Estratégico',
-    department: 'Dirección General de Agentes',
+    name: 'Director',
+    roleTitle: 'Director Ejecutivo & Coordinador Estratégico',
+    department: 'Dirección y Orquestación',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     status: 'active',
     currentTask: 'Supervisión de entregables WISP y balance de prioridades ejecutivas',
     lastActivity: 'Hace 2 minutos',
-    model: 'Hermes Core / Claude 3.5 Sonnet (Simulado)',
+    model: 'Director Core / Claude 3.5 Sonnet (Simulado)',
     autonomyLevel: 'supervisado',
     requiresApproval: true,
     maxExecutionTimeMinutes: 30,
@@ -35,18 +35,19 @@ export const INITIAL_AGENTS: AgentProfile[] = [
       totalRuns: 184,
       tokensConsumedEstimate: '1.2M tokens'
     },
-    systemInstructions: 'Actúa como el Director General del equipo de agentes Hermes para NUGA. Tu foco es el rigor ejecutivo, claridad extrema para Ramiro, delegación estricta y protección de la infraestructura.'
+    systemInstructions: 'Actúa como el Director Ejecutivo del equipo de agentes para NUGA. Tu foco es el rigor ejecutivo, claridad extrema para Ramiro, delegación estricta y protección de la infraestructura.',
+    isDemo: true
   },
   {
     id: 'nugacore',
-    name: 'Especialista NugaCore',
+    name: 'NugaCore',
     roleTitle: 'Ingeniería de Software & Arquitectura',
     department: 'Tecnología y Desarrollo',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     status: 'active',
     currentTask: 'Refactorización de adapters para desacoplar APIs de simulación',
     lastActivity: 'Hace 5 minutos',
-    model: 'Hermes Code / DeepSeek-Coder-V2 (Simulado)',
+    model: 'NugaCore Engine / DeepSeek-Coder-V2 (Simulado)',
     autonomyLevel: 'semi-autonomo',
     requiresApproval: true,
     maxExecutionTimeMinutes: 45,
@@ -71,18 +72,19 @@ export const INITIAL_AGENTS: AgentProfile[] = [
       totalRuns: 142,
       tokensConsumedEstimate: '850K tokens'
     },
-    systemInstructions: 'Eres el arquitecto e ingeniero principal de NugaCore. Prioriza la tipificación estricta, la separación de responsabilidades y la seguridad.'
+    systemInstructions: 'Eres el especialista de ingeniería de software e infraestructura de NugaCore. Prioriza la tipificación estricta, la separación de responsabilidades y la seguridad.',
+    isDemo: true
   },
   {
     id: 'operaciones',
-    name: 'Especialista Operaciones WISP',
-    roleTitle: 'Infraestructura de Redes & MikroTik',
+    name: 'Operaciones',
+    roleTitle: 'Infraestructura de Redes & Operaciones WISP',
     department: 'Telecomunicaciones y Redes',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     status: 'warning',
     currentTask: 'Monitoreo de latencia en Torre Norte y auditoría de firewall CHR-LAB-01',
     lastActivity: 'Hace 1 minuto',
-    model: 'Hermes Network / GPT-4o Mini (Simulado)',
+    model: 'NetOps Core / GPT-4o Mini (Simulado)',
     autonomyLevel: 'supervisado',
     requiresApproval: true,
     maxExecutionTimeMinutes: 20,
@@ -107,18 +109,19 @@ export const INITIAL_AGENTS: AgentProfile[] = [
       totalRuns: 210,
       tokensConsumedEstimate: '1.5M tokens'
     },
-    systemInstructions: 'Especialista en redes WISP y RouterOS. Enfatiza la tolerancia a fallos, redundancia de enlaces, monitoreo proactivo y seguridad perimetral.'
+    systemInstructions: 'Especialista en redes WISP y RouterOS. Enfatiza la tolerancia a fallos, redundancia de enlaces, monitoreo proactivo y seguridad perimetral.',
+    isDemo: true
   },
   {
     id: 'marketing',
-    name: 'Especialista Marketing & Medios',
+    name: 'Marketing',
     roleTitle: 'Estrategia Creativa & Producción Visual',
     department: 'Crecimiento y Marketing',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
     status: 'active',
     currentTask: 'Generación de storyboards para Campaña Fibra + WISP 200Mbps',
     lastActivity: 'Hace 12 minutos',
-    model: 'Hermes Media / Claude 3.5 Sonnet (Simulado)',
+    model: 'Media Core / Claude 3.5 Sonnet (Simulado)',
     autonomyLevel: 'semi-autonomo',
     requiresApproval: true,
     maxExecutionTimeMinutes: 60,
@@ -143,18 +146,19 @@ export const INITIAL_AGENTS: AgentProfile[] = [
       totalRuns: 95,
       tokensConsumedEstimate: '920K tokens'
     },
-    systemInstructions: 'Director creativo de NUGA. Diseña campañas visuales impactantes, orientadas a la propuesta de valor de velocidad y confiabilidad.'
+    systemInstructions: 'Director creativo de NUGA. Diseña campañas visuales impactantes, orientadas a la propuesta de valor de velocidad y confiabilidad.',
+    isDemo: true
   },
   {
     id: 'administracion',
-    name: 'Especialista Administración',
+    name: 'Administración',
     roleTitle: 'Gestión Operativa, Minutas & Seguimiento',
     department: 'Operaciones Administrativas',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
     status: 'idle',
     currentTask: 'Consolidación de acuerdos de proveedores de fibra y minutas de auditoría',
     lastActivity: 'Hace 25 minutos',
-    model: 'Hermes Admin / GPT-4o (Simulado)',
+    model: 'Admin Core / GPT-4o (Simulado)',
     autonomyLevel: 'supervisado',
     requiresApproval: false,
     maxExecutionTimeMinutes: 20,
@@ -179,7 +183,8 @@ export const INITIAL_AGENTS: AgentProfile[] = [
       totalRuns: 88,
       tokensConsumedEstimate: '450K tokens'
     },
-    systemInstructions: 'Especialista administrativo. Garantiza que ningún acuerdo o fecha límite se pierda, manteniendo registros claros y trazables.'
+    systemInstructions: 'Especialista administrativo. Garantiza que ningún acuerdo o fecha límite se pierda, manteniendo registros claros y trazables.',
+    isDemo: true
   }
 ];
 
@@ -208,7 +213,8 @@ export const INITIAL_PROJECTS: Project[] = [
     ],
     budgetEstimateUsd: 4200,
     summaryExecutive: 'Proyecto central de infraestructura de telecomunicaciones con 287 clientes activos. En fase de optimización de rutas y hardening de firewall.',
-    deliverablesCount: 5
+    deliverablesCount: 5,
+    isDemo: true
   },
   {
     id: 'proj-chr-lab',
@@ -233,14 +239,15 @@ export const INITIAL_PROJECTS: Project[] = [
     ],
     budgetEstimateUsd: 1500,
     summaryExecutive: 'Pruebas en CHR concluidas exitosamente. Esperando decisión ejecutiva para aplicar la política de gestión WireGuard en nodos de producción.',
-    deliverablesCount: 4
+    deliverablesCount: 4,
+    isDemo: true
   },
   {
     id: 'proj-nugacore-pilot',
     code: 'PRJ-CORE-03',
     name: 'Piloto Interno de NugaCore y Consola de Agentes',
     category: 'nugacore',
-    objective: 'Desarrollar la consola administrativa desacoplada para gestión de agentes Hermes, toma de decisiones y visualización ejecutiva.',
+    objective: 'Desarrollar la consola administrativa desacoplada para gestión de agentes, toma de decisiones y visualización ejecutiva.',
     owner: 'Ramiro (Propietario)',
     team: ['director', 'nugacore', 'administracion'],
     status: 'active',
@@ -258,7 +265,8 @@ export const INITIAL_PROJECTS: Project[] = [
     ],
     budgetEstimateUsd: 6500,
     summaryExecutive: 'Consola operativa lista para demostración ejecutiva integral, con 13 pantallas funcionales y persistencia local.',
-    deliverablesCount: 6
+    deliverablesCount: 6,
+    isDemo: true
   },
   {
     id: 'proj-mkt-hogar',
@@ -283,6 +291,7 @@ export const INITIAL_PROJECTS: Project[] = [
     ],
     budgetEstimateUsd: 1800,
     summaryExecutive: 'Creatividades y piezas de video listas para revisión ejecutiva. Storyboard evaluado con alta puntuación de impacto.',
-    deliverablesCount: 5
+    deliverablesCount: 5,
+    isDemo: true
   }
 ];

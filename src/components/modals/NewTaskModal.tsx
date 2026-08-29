@@ -6,8 +6,6 @@ import { AgentRole, PriorityLevel } from '../../types';
 export const NewTaskModal: React.FC = () => {
   const { activeModal, closeModal, modalProps, projects, agents, createTask } = useApp();
 
-  if (activeModal !== 'newTask') return null;
-
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState(modalProps?.projectId || projects[0]?.id || 'proj-wisp-pilot');
@@ -15,6 +13,8 @@ export const NewTaskModal: React.FC = () => {
   const [priority, setPriority] = useState<PriorityLevel>('alta');
   const [deadline, setDeadline] = useState('2026-09-10');
   const [requiresHumanApproval, setRequiresHumanApproval] = useState(true);
+
+  if (activeModal !== 'newTask') return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +39,7 @@ export const NewTaskModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+    <div id="modal-new-task" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-xl rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden">
         <div className="p-4 md:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
           <div className="flex items-center gap-2.5">
@@ -92,7 +92,7 @@ export const NewTaskModal: React.FC = () => {
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500 capitalize"
               >
                 {agents.map(a => (
-                  <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
+                  <option key={a.id} value={a.id}>{a.name} ({a.roleTitle})</option>
                 ))}
               </select>
             </div>

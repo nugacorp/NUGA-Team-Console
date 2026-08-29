@@ -36,6 +36,49 @@ export type ScreenId =
   | 'auditoria'
   | 'configuracion';
 
+const VALID_SCREENS: ScreenId[] = [
+  'resumen',
+  'decisiones',
+  'equipo-ia',
+  'conversaciones',
+  'tareas',
+  'proyectos',
+  'operaciones-wisp',
+  'nugacore',
+  'marketing',
+  'administracion',
+  'entregables',
+  'auditoria',
+  'configuracion'
+];
+
+const normalizeScreenFromUrl = (): ScreenId => {
+  try {
+    if (typeof window === 'undefined') return 'resumen';
+    
+    // Check hash first: #/tareas, #tareas, #/operaciones-wisp, etc.
+    const rawHash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
+    if (rawHash) {
+      if (rawHash === 'resumen-ejecutivo') return 'resumen';
+      if (VALID_SCREENS.includes(rawHash as ScreenId)) {
+        return rawHash as ScreenId;
+      }
+    }
+    
+    // Check path: /tareas, /operaciones-wisp, etc.
+    const rawPath = window.location.pathname.replace(/^\//, '').trim().toLowerCase();
+    if (rawPath) {
+      if (rawPath === 'resumen-ejecutivo') return 'resumen';
+      if (VALID_SCREENS.includes(rawPath as ScreenId)) {
+        return rawPath as ScreenId;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return 'resumen';
+};
+
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error' | 'info' | 'warning';
@@ -135,7 +178,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('resumen');
+  const [currentScreen, setCurrentScreenState] = useState<ScreenId>(() => normalizeScreenFromUrl());
   const [user, setUser] = useState<User>(() => storageService.getUser());
   const [settings, setSettings] = useState<AppSettings>(() => storageService.getSettings());
   const [theme, setTheme] = useState<'dark' | 'light'>(() => storageService.getSettings().theme);
@@ -200,6 +243,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const closeModal = useCallback(() => {
     setActiveModal(null);
     setModalProps(null);
+  }, []);
+
+  const setCurrentScreen = useCallback((screen: ScreenId) => {
+    setCurrentScreenState(screen);
+    try {
+      if (typeof window !== 'undefined') {
+        const targetHash = `#/${screen}`;
+        if (window.location.hash !== targetHash) {
+          window.location.hash = targetHash;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Listen for hash/url changes for direct reload and back/forward navigation
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const screen = normalizeScreenFromUrl();
+      setCurrentScreenState(screen);
+    };
+
+    window.addEventListener('hashchange', handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
+
+    // Ensure URL hash reflects initial screen
+    const initialScreen = normalizeScreenFromUrl();
+    if (typeof window !== 'undefined' && window.location.hash !== `#/${initialScreen}`) {
+      window.history.replaceState(null, '', `#/${initialScreen}`);
+    }
+
+    return () => {
+      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
+    };
   }, []);
 
   // Synchronize HTML theme class

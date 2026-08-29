@@ -67,7 +67,7 @@ export const GlobalSearchModal: React.FC = () => {
     ? (tasks || []).filter(t => (t.title || '').toLowerCase().includes(q) || (t.code || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q))
     : [];
   const filteredDecisions = q
-    ? (decisions || []).filter(d => (d.title || '').toLowerCase().includes(q) || (d.code || '').toLowerCase().includes(q) || (d.summary || d.situation || '').toLowerCase().includes(q))
+    ? (decisions || []).filter(d => (d.title || '').toLowerCase().includes(q) || (d.code || '').toLowerCase().includes(q) || (d.proposal || d.situation || '').toLowerCase().includes(q))
     : [];
   const filteredRouters = q
     ? (routers || []).filter(r => (r.identity || (r as any).name || '').toLowerCase().includes(q) || (r.interfaces?.[0]?.ipAddress || (r as any).ip || '').includes(q) || (r.model || '').toLowerCase().includes(q) || (r.id || '').toLowerCase().includes(q))
@@ -76,7 +76,7 @@ export const GlobalSearchModal: React.FC = () => {
     ? (projects || []).filter(p => (p.name || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.objective || '').toLowerCase().includes(q))
     : [];
   const filteredDeliverables = q
-    ? (deliverables || []).filter(d => (d.title || '').toLowerCase().includes(q) || (d.code || '').toLowerCase().includes(q) || (d.summary || (d as any).executiveSummary || '').toLowerCase().includes(q))
+    ? (deliverables || []).filter(d => (d.title || '').toLowerCase().includes(q) || (d.code || '').toLowerCase().includes(q) || (d.executiveSummary || '').toLowerCase().includes(q))
     : [];
   const filteredCampaigns = q
     ? (campaigns || []).filter(c => (c.name || '').toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q) || (c.objective || '').toLowerCase().includes(q))
@@ -91,7 +91,7 @@ export const GlobalSearchModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+    <div id="global-search-modal" className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
       <div
         id="global-search-dialog"
         className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black overflow-hidden flex flex-col max-h-[80vh]"
@@ -100,6 +100,7 @@ export const GlobalSearchModal: React.FC = () => {
         <div className="flex items-center px-4 py-3.5 border-b border-slate-800 gap-3">
           <Search className="w-5 h-5 text-sky-400 shrink-0" />
           <input
+            id="global-search-input"
             ref={inputRef}
             type="text"
             value={query}
@@ -108,13 +109,17 @@ export const GlobalSearchModal: React.FC = () => {
             className="flex-1 bg-transparent border-none text-slate-100 text-sm focus:outline-none placeholder-slate-500"
           />
           {query && (
-            <button onClick={() => setQuery('')} className="p-1 text-slate-400 hover:text-slate-200">
+            <button id="clear-search-btn" onClick={() => setQuery('')} className="p-1 text-slate-400 hover:text-slate-200">
               <X className="w-4 h-4" />
             </button>
           )}
-          <kbd className="hidden sm:inline-block px-2 py-0.5 text-xs bg-slate-800 border border-slate-700 rounded text-slate-400">
+          <button
+            id="close-search-modal-btn"
+            onClick={() => setIsSearchModalOpen(false)}
+            className="px-2 py-0.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
             ESC
-          </kbd>
+          </button>
         </div>
 
         {/* Results List */}
@@ -191,7 +196,7 @@ export const GlobalSearchModal: React.FC = () => {
                             <span className="text-[11px] font-mono text-amber-400 font-bold">{d.code}</span>
                             <span className="text-xs font-semibold text-slate-200">{d.title}</span>
                           </div>
-                          <p className="text-xs text-slate-400 line-clamp-1">{d.summary}</p>
+                          <p className="text-xs text-slate-400 line-clamp-1">{d.proposal || d.situation}</p>
                         </div>
                         <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-sky-400 shrink-0" />
                       </div>
@@ -273,7 +278,7 @@ export const GlobalSearchModal: React.FC = () => {
                             <span className="text-[11px] font-mono text-teal-400 font-bold">{del.code}</span>
                             <span className="text-xs font-semibold text-slate-200">{del.title}</span>
                           </div>
-                          <p className="text-xs text-slate-400 line-clamp-1">{del.summary}</p>
+                          <p className="text-xs text-slate-400 line-clamp-1">{del.executiveSummary}</p>
                         </div>
                         <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-sky-400 shrink-0" />
                       </div>

@@ -109,10 +109,15 @@ export const ConversacionesScreen: React.FC = () => {
       {/* Left Sidebar: Conversations list */}
       <div className="w-full md:w-80 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col overflow-hidden shrink-0">
         <div className="p-4 border-b border-slate-800">
-          <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-sky-400" />
-            Canales de Agentes Hermes
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-sky-400" />
+              Canales de Agentes
+            </h2>
+            <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
+              DEMO
+            </span>
+          </div>
           <p className="text-[11px] text-slate-400 mt-0.5">Orquestación y consultas directas</p>
         </div>
 

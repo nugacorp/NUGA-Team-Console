@@ -3,6 +3,8 @@ export type PriorityLevel = 'baja' | 'media' | 'alta' | 'urgente';
 
 export type AgentRole = 'director' | 'nugacore' | 'operaciones' | 'marketing' | 'administracion';
 
+export type HermesStatus = 'Desconectado' | 'Conectando' | 'Operativo' | 'Procesando' | 'Degradado' | 'Error';
+
 export interface User {
   id: string;
   name: string;
@@ -10,6 +12,7 @@ export interface User {
   role: 'owner' | 'admin' | 'viewer';
   title: string;
   avatar: string;
+  isDemo?: boolean;
 }
 
 export interface AgentProfile {
@@ -39,6 +42,7 @@ export interface AgentProfile {
     tokensConsumedEstimate: string;
   };
   systemInstructions: string;
+  isDemo?: boolean;
 }
 
 export interface MessageAttachment {
@@ -47,6 +51,7 @@ export interface MessageAttachment {
   type: 'image' | 'video' | 'document' | 'json' | 'code';
   url?: string;
   size: string;
+  isDemo?: boolean;
 }
 
 export interface ToolCallSummary {
@@ -55,6 +60,7 @@ export interface ToolCallSummary {
   resultSummary: string;
   status: 'success' | 'failed' | 'requires_approval';
   risk: RiskLevel;
+  isDemo?: boolean;
 }
 
 export interface Message {
@@ -73,6 +79,7 @@ export interface Message {
   attachments?: MessageAttachment[];
   createdTaskId?: string;
   isOnlyAnalysis?: boolean;
+  isDemo?: boolean;
 }
 
 export interface Conversation {
@@ -83,6 +90,7 @@ export interface Conversation {
   lastMessageTimestamp: string;
   unreadCount: number;
   isProcessing?: boolean;
+  isDemo?: boolean;
 }
 
 export type TaskStatus = 'triage' | 'backlog' | 'ready' | 'in_progress' | 'blocked' | 'review' | 'completed' | 'done' | 'archived';
@@ -97,6 +105,7 @@ export interface TaskRun {
   outputSummary?: string;
   toolsUsed?: string[];
   fullLogs?: string[];
+  isDemo?: boolean;
 }
 
 export interface TaskComment {
@@ -107,6 +116,7 @@ export interface TaskComment {
   agentRole?: AgentRole;
   timestamp: string;
   text: string;
+  isDemo?: boolean;
 }
 
 export interface Task {
@@ -133,6 +143,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   deadline: string;
+  isDemo?: boolean;
 }
 
 export type DecisionStatus = 'pending' | 'approved' | 'rejected' | 'needs_info' | 'postponed' | 'simulated';
@@ -170,6 +181,7 @@ export interface Decision {
   status: DecisionStatus;
   history: DecisionActionLog[];
   createdAt: string;
+  isDemo?: boolean;
 }
 
 export interface ProjectMilestone {
@@ -196,6 +208,7 @@ export interface Project {
   budgetEstimateUsd: number;
   summaryExecutive: string;
   deliverablesCount: number;
+  isDemo?: boolean;
 }
 
 export type DeliverableType = 'markdown' | 'pdf' | 'image' | 'video' | 'json' | 'report' | 'checklist' | 'tech_evidence';
@@ -221,6 +234,7 @@ export interface Deliverable {
   limitations: string[];
   rawContentMarkdown?: string;
   mediaUrl?: string;
+  isDemo?: boolean;
 }
 
 export interface WispTower {
@@ -240,6 +254,7 @@ export interface WispTower {
   maxCapacityMbps: number;
   alerts: string[];
   coordinates: { x: number; y: number }; // For visual topology canvas
+  isDemo?: boolean;
 }
 
 export interface MikroTikFinding {
@@ -284,6 +299,7 @@ export interface MikroTikRouter {
   servicesRunning: { name: string; port: number; status: 'enabled' | 'disabled' }[];
   findings: MikroTikFinding[];
   auditHistory: { date: string; auditorAgent: AgentRole; scorePercent: number; findingsCount: number }[];
+  isDemo?: boolean;
 }
 
 export interface WispLink {
@@ -297,6 +313,7 @@ export interface WispLink {
   capacityMbps: number;
   snrDb: number;
   distanceKm: number;
+  isDemo?: boolean;
 }
 
 export interface WispIncident {
@@ -317,6 +334,7 @@ export interface WispIncident {
   proposedActions: string[];
   customerCommunicationPlan: string;
   resolutionEvidence?: string;
+  isDemo?: boolean;
 }
 
 export type CreativeStep = 'idea' | 'brief' | 'script' | 'storyboard' | 'generation' | 'review' | 'approved' | 'scheduled' | 'published';
@@ -344,6 +362,7 @@ export interface Campaign {
   };
   requiresApproval: boolean;
   assignedAgent: AgentRole;
+  isDemo?: boolean;
 }
 
 export type IncidentSeverity = RiskLevel;
@@ -372,6 +391,7 @@ export interface MediaAsset {
   storyboardFrames?: string[];
   storyboardScenes?: { sceneNumber: number; visualPrompt: string; audioPrompt: string }[];
   createdAt?: string;
+  isDemo?: boolean;
 }
 
 export type AdminCategory = 'acuerdo' | 'minuta' | 'cotizacion' | 'pago_reportado' | 'documento' | 'pendiente';
@@ -388,6 +408,7 @@ export interface AdminItem {
   amountUsd?: number;
   evidenceRef?: string;
   notes?: string;
+  isDemo?: boolean;
 }
 
 export interface AuditEvent {
@@ -407,6 +428,7 @@ export interface AuditEvent {
   correlationId: string;
   relatedApprovalId?: string;
   jsonPayload: Record<string, any>;
+  isDemo?: boolean;
 }
 
 export interface AppNotification {
@@ -419,6 +441,7 @@ export interface AppNotification {
   read: boolean;
   linkScreen?: string;
   linkItemId?: string;
+  isDemo?: boolean;
 }
 
 export interface AppSettings {
@@ -429,8 +452,9 @@ export interface AppSettings {
   retainLogsDays: number;
   telegramNotificationsSimulated: boolean;
   maxAgentExecutionMinutes: number;
-  hermesEngineStatus: 'online' | 'degraded' | 'maintenance';
+  hermesEngineStatus: HermesStatus;
   mcpServerStatus: 'connected_demo' | 'offline';
   mikrotikApiStatus: 'mock_sandbox' | 'disconnected';
   higgsfieldApiStatus: 'mock_sandbox' | 'disconnected';
+  isDemo?: boolean;
 }

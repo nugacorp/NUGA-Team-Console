@@ -45,7 +45,12 @@ export const AdministracionScreen: React.FC = () => {
             <Briefcase className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Operaciones Administrativas & Acuerdos</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-100">Operaciones Administrativas & Acuerdos</h2>
+              <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] font-mono font-bold text-amber-400">
+                DEMO
+              </span>
+            </div>
             <p className="text-xs text-slate-400">
               Minutas, control de arrendamientos, cotizaciones preliminares y seguimiento de compromisos
             </p>

@@ -200,6 +200,9 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-slate-100">Entregables Técnicos & Dossier</h2>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                DEMO
+              </span>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
                 PDF Export Ready
               </span>
@@ -313,10 +316,11 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
                 className="w-1/2 px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-300 focus:outline-none focus:border-teal-500/50"
               >
                 <option value="all">Todos los agentes</option>
-                <option value="operaciones">Operaciones WISP</option>
-                <option value="marketing">Marketing</option>
+                <option value="director">Director</option>
                 <option value="nugacore">NugaCore</option>
-                <option value="director">Dirección</option>
+                <option value="operaciones">Operaciones</option>
+                <option value="marketing">Marketing</option>
+                <option value="administracion">Administración</option>
               </select>
             </div>
           </div>
@@ -596,17 +600,20 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
                 {/* 5. Cryptographic Seal & Signatures Box */}
                 <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-slate-400">
+                    <div className="flex items-center gap-2 text-slate-400">
                       <Hash className="w-3.5 h-3.5 text-teal-400" />
                       <span className="font-mono text-[11px]">
-                        SHA-256:{' '}
+                        SHA-256 (DEMO):{' '}
                         <strong className="text-slate-300 font-mono">
                           {activeDeliverable.simulatedSha256 || 'e3b0c44298fc1c14...'}
                         </strong>
                       </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        DEMO
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-500">
-                      Certificación criptográfica de auditoría inmutable en el repositorio de entregables.
+                    <p className="text-[11px] text-slate-400">
+                      Hash calculado localmente en el navegador; no constituye firma digital ni evidencia de servidor.
                     </p>
                   </div>
 

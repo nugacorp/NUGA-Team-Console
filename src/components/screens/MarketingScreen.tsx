@@ -61,9 +61,14 @@ export const MarketingScreen: React.FC = () => {
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Marketing & Biblioteca Multimedia</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-100">Marketing & Biblioteca Multimedia</h2>
+              <span className="px-2 py-0.5 rounded bg-fuchsia-500/10 border border-fuchsia-500/20 text-[10px] font-mono font-bold text-fuchsia-400">
+                DEMO
+              </span>
+            </div>
             <p className="text-xs text-slate-400">
-              Campañas de pauta, generación de videos en Higgsfield (simulado) y métricas de adquisición
+              Campañas de pauta, generación de videos (simulado) y métricas de adquisición
             </p>
           </div>
         </div>
@@ -174,12 +179,12 @@ export const MarketingScreen: React.FC = () => {
                   <div>
                     <span className="text-xs font-mono font-bold text-fuchsia-400">{selectedCampaign.code}</span>
                     <h3 className="text-lg font-extrabold text-slate-100 mt-1">{selectedCampaign.name}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Plazo: {selectedCampaign.startDate} al {selectedCampaign.endDate}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Plazo: {selectedCampaign.scheduleDateRange || 'En curso'}</p>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Presupuesto</span>
-                    <span className="text-base font-bold text-slate-100">${(selectedCampaign.budgetUsd || 0).toLocaleString()} USD</span>
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Presupuesto Simulado</span>
+                    <span className="text-base font-bold text-slate-100">${(selectedCampaign.simulatedBudgetUsd || 0).toLocaleString()} USD</span>
                   </div>
                 </div>
 

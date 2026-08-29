@@ -1,6 +1,6 @@
 import { Campaign, MediaAsset, Deliverable } from '../types';
 
-export const INITIAL_CAMPAIGNS: Campaign[] = [
+const RAW_CAMPAIGNS: Campaign[] = [
   {
     id: 'camp-01',
     code: 'CMP-2026-HOGAR',
@@ -171,7 +171,7 @@ export const INITIAL_CAMPAIGNS: Campaign[] = [
   }
 ];
 
-export const INITIAL_MEDIA_ASSETS: MediaAsset[] = [
+const RAW_MEDIA_ASSETS: MediaAsset[] = [
   {
     id: 'med-01',
     title: 'Spot Vertical 15s - "Internet Sin Cortes para Teletrabajo"',
@@ -507,7 +507,7 @@ export const INITIAL_MEDIA_ASSETS: MediaAsset[] = [
   }
 ];
 
-export const INITIAL_DELIVERABLES: Deliverable[] = [
+const RAW_DELIVERABLES: Deliverable[] = [
   {
     id: 'deliv-01',
     code: 'DEL-2026-01',
@@ -896,3 +896,18 @@ Cualquier llamada simula latencia de red de 150ms para reflejar estados de carga
     limitations: []
   }
 ];
+
+export const INITIAL_CAMPAIGNS: Campaign[] = RAW_CAMPAIGNS.map(campaign => ({
+  ...campaign,
+  isDemo: true
+}));
+
+export const INITIAL_MEDIA_ASSETS: MediaAsset[] = RAW_MEDIA_ASSETS.map(asset => ({
+  ...asset,
+  isDemo: true
+}));
+
+export const INITIAL_DELIVERABLES: Deliverable[] = RAW_DELIVERABLES.map(deliverable => ({
+  ...deliverable,
+  isDemo: true
+}));

@@ -35,7 +35,6 @@ const MainLayout: React.FC = () => {
   const renderActiveScreen = () => {
     switch (currentScreen) {
       case 'resumen':
-      case 'resumen-ejecutivo':
         return <ResumenEjecutivoScreen />;
       case 'decisiones':
         return <DecisionesScreen />;

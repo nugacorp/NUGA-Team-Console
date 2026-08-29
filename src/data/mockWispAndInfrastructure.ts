@@ -1,6 +1,6 @@
 import { WispTower, MikroTikRouter, WispLink, WispIncident } from '../types';
 
-export const INITIAL_TOWERS: WispTower[] = [
+const RAW_TOWERS: WispTower[] = [
   {
     id: 'tower-centro',
     name: 'Torre Centro (Nodo Principal)',
@@ -75,7 +75,7 @@ export const INITIAL_TOWERS: WispTower[] = [
   }
 ];
 
-export const INITIAL_ROUTERS: MikroTikRouter[] = [
+const RAW_ROUTERS: MikroTikRouter[] = [
   {
     id: 'router-edge-01',
     identity: 'EDGE-DEMO-01',
@@ -313,7 +313,7 @@ export const INITIAL_ROUTERS: MikroTikRouter[] = [
   }
 ];
 
-export const INITIAL_LINKS: WispLink[] = [
+const RAW_LINKS: WispLink[] = [
   { id: 'link-1', name: 'Centro -> WAN Fibra Principal', fromNodeId: 'tower-centro', toNodeId: 'wan-isp-1', frequency: 'Fibra Óptica GPON/SFP+', status: 'optimal', bandwidthMbps: 420, capacityMbps: 1000, snrDb: 45, distanceKm: 0.1 },
   { id: 'link-2', name: 'Centro -> Torre Norte (PTP)', fromNodeId: 'tower-centro', toNodeId: 'tower-norte', frequency: '5.8 GHz (Canal 5745 MHz)', status: 'optimal', bandwidthMbps: 185, capacityMbps: 350, snrDb: 34, distanceKm: 5.4 },
   { id: 'link-3', name: 'Centro -> Torre Sur (Troncal)', fromNodeId: 'tower-centro', toNodeId: 'tower-sur', frequency: 'Fibra Dedicada Aérea', status: 'optimal', bandwidthMbps: 130, capacityMbps: 1000, snrDb: 42, distanceKm: 3.8 },
@@ -328,7 +328,7 @@ export const INITIAL_LINKS: WispLink[] = [
   { id: 'link-12', name: 'Enlace de Respaldo Centro -> Este', fromNodeId: 'tower-centro', toNodeId: 'tower-este', frequency: '60 GHz PtP (Inactivo Standby)', status: 'optimal', bandwidthMbps: 0, capacityMbps: 1000, snrDb: 38, distanceKm: 6.8 }
 ];
 
-export const INITIAL_INCIDENTS: WispIncident[] = [
+const RAW_INCIDENTS: WispIncident[] = [
   {
     id: 'inc-001',
     code: 'INC-2026-081',
@@ -537,3 +537,23 @@ export const INITIAL_INCIDENTS: WispIncident[] = [
     customerCommunicationPlan: 'N/A'
   }
 ];
+
+export const INITIAL_TOWERS: WispTower[] = RAW_TOWERS.map(tower => ({
+  ...tower,
+  isDemo: true
+}));
+
+export const INITIAL_ROUTERS: MikroTikRouter[] = RAW_ROUTERS.map(router => ({
+  ...router,
+  isDemo: true
+}));
+
+export const INITIAL_LINKS: WispLink[] = RAW_LINKS.map(link => ({
+  ...link,
+  isDemo: true
+}));
+
+export const INITIAL_INCIDENTS: WispIncident[] = RAW_INCIDENTS.map(incident => ({
+  ...incident,
+  isDemo: true
+}));

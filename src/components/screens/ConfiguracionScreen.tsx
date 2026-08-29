@@ -30,7 +30,12 @@ export const ConfiguracionScreen: React.FC = () => {
             <Settings className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Configuración & Seguridad de la Consola</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-100">Configuración & Seguridad de la Consola</h2>
+              <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
+                DEMO
+              </span>
+            </div>
             <p className="text-xs text-slate-400">
               Gobernanza de agentes, políticas de sandbox, parámetros de persistencia y adaptadores
             </p>

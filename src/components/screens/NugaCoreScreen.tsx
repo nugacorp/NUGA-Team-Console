@@ -49,7 +49,7 @@ Ran all test suites in sandbox environment.`);
     { name: 'Adapter MikroTik v7 (ROS API/SSH)', status: 'operational', version: 'v2.1.0', files: 8, coverage: '94%' },
     { name: 'Local Persistence Engine (StorageService)', status: 'operational', version: 'v1.4.0', files: 4, coverage: '98%' },
     { name: 'Decision & Governance Enforcement', status: 'operational', version: 'v1.2.0', files: 6, coverage: '96%' },
-    { name: 'Multi-Agent Hermes Orchestrator', status: 'operational', version: 'v2.4.0', files: 12, coverage: '91%' },
+    { name: 'Multi-Agent Orchestrator & Dispatcher', status: 'operational', version: 'v2.4.0', files: 12, coverage: '91%' },
     { name: 'Media Asset Pipeline (Higgsfield Mock)', status: 'operational', version: 'v1.0.0', files: 4, coverage: '82%' }
   ];
 
@@ -62,7 +62,12 @@ Ran all test suites in sandbox environment.`);
             <Code2 className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Ingeniería NugaCore & CI/CD</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-100">Ingeniería NugaCore & CI/CD</h2>
+              <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-mono font-bold text-cyan-400">
+                DEMO
+              </span>
+            </div>
             <p className="text-xs text-slate-400">
               Arquitectura desacoplada, suite de pruebas, salud de código y adaptadores de infraestructura
             </p>
@@ -93,23 +98,32 @@ Ran all test suites in sandbox environment.`);
       {/* CI/CD Health KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
-          <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Pruebas Unitarias</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Pruebas Unitarias</span>
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">DEMO</span>
+          </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-2xl font-extrabold text-emerald-400">142/142</span>
-            <span className="text-xs text-slate-400">100% pasando</span>
+            <span className="text-xs text-slate-400">Simulación Sandbox</span>
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
-          <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Cobertura de Código</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Cobertura Simulada</span>
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">DEMO</span>
+          </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-2xl font-extrabold text-sky-400">92.4%</span>
-            <span className="text-xs text-emerald-400 font-semibold">+1.2% este mes</span>
+            <span className="text-xs text-slate-400">Métrica Proyectada</span>
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
-          <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Errores TypeScript</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Errores TypeScript</span>
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">REAL</span>
+          </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-2xl font-extrabold text-slate-100">0</span>
             <span className="text-xs text-emerald-400 font-bold">Modo Estricto</span>
@@ -117,7 +131,10 @@ Ran all test suites in sandbox environment.`);
         </div>
 
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
-          <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Desacoplamiento</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Desacoplamiento</span>
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">DEMO</span>
+          </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-2xl font-extrabold text-purple-400">100%</span>
             <span className="text-xs text-slate-400">Capa StorageService</span>

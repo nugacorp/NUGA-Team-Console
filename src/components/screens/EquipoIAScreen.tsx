@@ -52,7 +52,12 @@ export const EquipoIAScreen: React.FC = () => {
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-100">Organigrama del Sistema Hermes</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-100">Organigrama del Equipo de Agentes IA</h2>
+                <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
+                  DEMO
+                </span>
+              </div>
               <p className="text-xs text-slate-400">
                 Estructura de orquestación, perfiles especializados, límites de autonomía y permisos de herramientas
               </p>
@@ -104,17 +109,17 @@ export const EquipoIAScreen: React.FC = () => {
                 <h3 className="text-sm font-bold text-slate-100">{agent.name}</h3>
                 <p className="text-xs text-sky-400 font-medium line-clamp-1 mt-0.5">{agent.roleTitle}</p>
                 <p className="text-[11px] text-slate-400 mt-2 line-clamp-2 leading-relaxed">
-                  {agent.shortDescription}
+                  {agent.responsibilities?.[0] || agent.department}
                 </p>
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400 font-mono">{agent.modelEngine ? agent.modelEngine.split(' ')[0] : 'Gemini'}</span>
+                <span className="text-slate-400 font-mono">{agent.model ? agent.model.split('/')[0].trim() : 'Gemini'}</span>
                 <span
                   className={`w-2 h-2 rounded-full ${
                     agent.status === 'active'
                       ? 'bg-emerald-400'
-                      : agent.status === 'waiting_approval'
+                      : agent.status === 'warning'
                       ? 'bg-amber-400'
                       : 'bg-sky-400'
                   }`}
@@ -143,7 +148,7 @@ export const EquipoIAScreen: React.FC = () => {
                   <div>
                     <h3 className="text-lg font-extrabold text-slate-100">{selectedAgent.name}</h3>
                     <p className="text-xs text-sky-400 font-semibold">{selectedAgent.roleTitle}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Motor: {selectedAgent.modelEngine}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Motor: {selectedAgent.model}</p>
                   </div>
                 </div>
 
@@ -164,7 +169,7 @@ export const EquipoIAScreen: React.FC = () => {
               <div>
                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Objetivo & Misión:</span>
                 <p className="text-xs text-slate-300 mt-1.5 leading-relaxed bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/60">
-                  {selectedAgent.description}
+                  {selectedAgent.systemInstructions}
                 </p>
               </div>
 
@@ -186,15 +191,16 @@ export const EquipoIAScreen: React.FC = () => {
 
               {/* Allowed Scopes & Sandbox Rules */}
               <div>
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Alcances & Políticas de Seguridad:</span>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {(selectedAgent.allowedScopes || []).map((scope, idx) => (
-                    <span
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Límites & Políticas de Seguridad:</span>
+                <div className="flex flex-col gap-2 mt-2">
+                  {(selectedAgent.limits || []).map((limit, idx) => (
+                    <div
                       key={idx}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono"
+                      className="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-300 text-xs flex items-start gap-2"
                     >
-                      {scope}
-                    </span>
+                      <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <span>{limit}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -203,30 +209,16 @@ export const EquipoIAScreen: React.FC = () => {
               <div>
                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Wrench className="w-3.5 h-3.5 text-sky-400" />
-                  Herramientas Asignadas (MCP & SDKs):
+                  Herramientas Asignadas (Sandbox & MCP):
                 </span>
-                <div className="space-y-2 mt-2">
-                  {(selectedAgent.tools || []).map((t, idx) => (
-                    <div
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(selectedAgent.allowedTools || []).map((tool, idx) => (
+                    <span
                       key={idx}
-                      className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs flex items-center justify-between"
+                      className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-sky-300 text-xs font-mono"
                     >
-                      <div>
-                        <span className="font-mono font-bold text-sky-300">{t.name}</span>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{t.description}</p>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          t.riskLevel === 'high'
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                            : t.riskLevel === 'medium'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        }`}
-                      >
-                        Riesgo {t.riskLevel.toUpperCase()}
-                      </span>
-                    </div>
+                      {tool}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -346,7 +338,7 @@ export const EquipoIAScreen: React.FC = () => {
               />
             ) : (
               <pre className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 font-mono text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-56 custom-scrollbar">
-                {selectedAgent.systemPrompt}
+                {selectedAgent.systemInstructions}
               </pre>
             )}
           </div>

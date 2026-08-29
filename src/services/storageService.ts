@@ -147,7 +147,8 @@ export class StorageService {
     const newProject: Project = {
       ...project,
       id: `proj-${Date.now()}`,
-      code: `PRJ-${Math.floor(100 + Math.random() * 900)}`
+      code: `PRJ-${Math.floor(100 + Math.random() * 900)}`,
+      isDemo: true
     };
     const updated = [newProject, ...projects];
     setItem(STORAGE_KEYS.PROJECTS, updated);
@@ -157,6 +158,10 @@ export class StorageService {
   // --- TASKS ---
   getTasks(): Task[] {
     return getItem<Task[]>(STORAGE_KEYS.TASKS, INITIAL_TASKS);
+  }
+
+  saveTasks(tasks: Task[]): void {
+    setItem(STORAGE_KEYS.TASKS, tasks);
   }
 
   createTask(taskData: Omit<Task, 'id' | 'code' | 'createdAt' | 'updatedAt' | 'runs' | 'comments' | 'attachments' | 'deliverableIds'>): Task {
@@ -172,6 +177,7 @@ export class StorageService {
       comments: [],
       attachments: [],
       runs: [],
+      isDemo: true,
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0]
     };
@@ -225,6 +231,10 @@ export class StorageService {
     return getItem<Decision[]>(STORAGE_KEYS.DECISIONS, INITIAL_DECISIONS);
   }
 
+  saveDecisions(decisions: Decision[]): void {
+    setItem(STORAGE_KEYS.DECISIONS, decisions);
+  }
+
   executeDecisionAction(
     decisionId: string,
     action: 'approve' | 'reject' | 'needs_info' | 'postpone' | 'simulate' | 'adjust_scope',
@@ -269,6 +279,7 @@ export class StorageService {
         updatedDecision = {
           ...d,
           status: newStatus,
+          rejectionReason: action === 'reject' ? comment : d.rejectionReason,
           history: [logEntry, ...d.history]
         };
         return updatedDecision;
@@ -459,9 +470,9 @@ export class StorageService {
     };
 
     // Simulate intelligent agent response based on context & agent role
-    let botContent = '';
-    let executiveSummary = '';
-    let findings: string[] = [];
+    let botContent: string;
+    let executiveSummary: string;
+    let findings: string[];
     let technicalEvidence = '';
     let toolCalls: any[] = [];
     let createdTaskId: string | undefined;

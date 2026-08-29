@@ -84,7 +84,7 @@ export const Sidebar: React.FC = () => {
         { id: 'proyectos', label: 'Proyectos', icon: FolderKanban },
         {
           id: 'operaciones-wisp',
-          label: 'WISP MikroTik',
+          label: 'Operaciones WISP',
           icon: Radio,
           badge: openIncidentsCount > 0 ? openIncidentsCount : undefined,
           badgeType: 'warning'
@@ -158,7 +158,7 @@ export const Sidebar: React.FC = () => {
             )}
             {section.items.map(item => {
               const Icon = item.icon;
-              const isActive = currentScreen === item.id || (item.id === 'resumen' && currentScreen === 'resumen-ejecutivo');
+              const isActive = currentScreen === item.id;
 
               return (
                 <button

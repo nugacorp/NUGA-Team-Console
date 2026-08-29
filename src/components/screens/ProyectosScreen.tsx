@@ -38,7 +38,12 @@ export const ProyectosScreen: React.FC = () => {
             <FolderKanban className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Proyectos Estratégicos & Roadmaps</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-100">Proyectos Estratégicos & Roadmaps</h2>
+              <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
+                DEMO
+              </span>
+            </div>
             <p className="text-xs text-slate-400">
               Iniciativas de infraestructura WISP, ingeniería NugaCore, marketing y control administrativo
             </p>
@@ -106,7 +111,7 @@ export const ProyectosScreen: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-[11px] text-slate-400 pt-1">
                   <span>{completedCount}/{projectTasks.length} tareas</span>
-                  <span>{project.deadline}</span>
+                  <span>{project.targetEndDate}</span>
                 </div>
               </div>
             </div>
@@ -121,7 +126,7 @@ export const ProyectosScreen: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-mono font-bold text-sky-400">{selectedProject.code}</span>
-                <span className="text-xs text-slate-400">Líder: <strong className="text-slate-200">{selectedProject.leadAgent}</strong></span>
+                <span className="text-xs text-slate-400">Responsable: <strong className="text-slate-200">{selectedProject.owner}</strong></span>
               </div>
               <h3 className="text-xl font-extrabold text-slate-100">{selectedProject.name}</h3>
               <p className="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">{selectedProject.objective}</p>
@@ -129,13 +134,13 @@ export const ProyectosScreen: React.FC = () => {
 
             <div className="flex items-center gap-4 bg-slate-950/60 px-4 py-3 rounded-xl border border-slate-800 shrink-0">
               <div>
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 block">Presupuesto</span>
-                <span className="text-sm font-bold text-slate-100">${(selectedProject.budgetUsd || 0).toLocaleString()} USD</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-400 block">Presupuesto Estimado</span>
+                <span className="text-sm font-bold text-slate-100">${(selectedProject.budgetEstimateUsd || 0).toLocaleString()} USD</span>
               </div>
               <div className="w-px h-8 bg-slate-800" />
               <div>
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 block">Gastado</span>
-                <span className="text-sm font-bold text-emerald-400">${(selectedProject.spentBudgetUsd || 0).toLocaleString()} USD</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-400 block">Progreso</span>
+                <span className="text-sm font-bold text-emerald-400">{selectedProject.progressPercent}%</span>
               </div>
             </div>
           </div>
@@ -157,11 +162,9 @@ export const ProyectosScreen: React.FC = () => {
                     <div className="flex items-center gap-2.5">
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          m.status === 'completed'
+                          m.completed
                             ? 'bg-emerald-400'
-                            : m.status === 'in_progress'
-                            ? 'bg-amber-400 animate-pulse'
-                            : 'bg-slate-600'
+                            : 'bg-amber-400'
                         }`}
                       />
                       <span className="font-semibold text-slate-200">{m.title}</span>
@@ -179,23 +182,21 @@ export const ProyectosScreen: React.FC = () => {
                 Matriz de Riesgos & Mitigaciones:
               </h4>
               <div className="space-y-2">
-                {(selectedProject.riskMatrix || []).map((r, idx) => (
+                {(selectedProject.risks || []).map((r, idx) => (
                   <div
                     key={idx}
                     className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60 text-xs space-y-1"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-200">{r.risk}</span>
+                      <span className="font-bold text-slate-200">{r.description}</span>
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                          r.severity === 'high'
+                          r.level === 'high' || r.level === 'critical'
                             ? 'bg-rose-500/20 text-rose-300'
-                            : r.severity === 'medium'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-emerald-500/20 text-emerald-300'
+                            : 'bg-amber-500/20 text-amber-300'
                         }`}
                       >
-                        {r.severity.toUpperCase()}
+                        {r.level.toUpperCase()}
                       </span>
                     </div>
                     <p className="text-slate-400 text-[11px]">

@@ -6,7 +6,15 @@ import {
   Flame,
   CheckCircle2,
   Plus,
-  Wifi
+  Wifi,
+  FileText,
+  Play,
+  Send,
+  Eye,
+  AlertTriangle,
+  X,
+  Copy,
+  Info
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { MikroTikRouter } from '../../types';
@@ -30,6 +38,8 @@ export const OperacionesWispScreen: React.FC = () => {
     routers.find(r => r.id === selectedRouterId) || routers[0]
   );
   const [isAuditing, setIsAuditing] = useState(false);
+  const [showBackupProposalModal, setShowBackupProposalModal] = useState(false);
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
 
   const handleSimulateAudit = () => {
     setIsAuditing(true);
@@ -37,10 +47,26 @@ export const OperacionesWispScreen: React.FC = () => {
       setIsAuditing(false);
       addToast({
         type: 'warning',
-        title: 'Auditoría MikroTik Finalizada',
-        message: 'Escaneo completado en 6 routers. 1 hallazgo crítico detectado en EDGE-DEMO-01 (Winbox WAN).'
+        title: 'Análisis MikroTik DEMO Finalizado',
+        message: 'Escaneo simulado completado en 6 routers. 1 hallazgo crítico detectado en EDGE-DEMO-01 (Winbox WAN).'
       });
-    }, 1200);
+    }, 1000);
+  };
+
+  const handleRequestDryRun = () => {
+    addToast({
+      type: 'info',
+      title: 'Dry-Run Solicitado',
+      message: `Simulación de validación de sintaxis y compatibilidad para ${selectedRouter.identity || selectedRouter.id} registrada en bitácora.`
+    });
+  };
+
+  const handleSendToApproval = () => {
+    addToast({
+      type: 'success',
+      title: 'Propuesta Enviada a Aprobación',
+      message: `Se ha generado la solicitud de cambio para ${selectedRouter.identity || selectedRouter.id}. Disponible en el panel de Decisiones.`
+    });
   };
 
   return (
@@ -52,33 +78,74 @@ export const OperacionesWispScreen: React.FC = () => {
             <Radio className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Operaciones WISP & Auditoría MikroTik</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-white">Operaciones WISP & Análisis MikroTik</h2>
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">
+                DEMO
+              </span>
+            </div>
             <p className="text-xs text-[#94A3B8]">
               Monitoreo de nodos, RouterOS v7, enlaces punto a punto y resolución de incidentes
             </p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        {/* Action Buttons (Strictly: Analizar, Preparar propuesta, Solicitar dry-run, Enviar a aprobación, Ver evidencia) */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             id="btn-run-mikrotik-audit"
             onClick={handleSimulateAudit}
             disabled={isAuditing}
-            className="px-3.5 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-green-950/40 disabled:opacity-50 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-green-950/40 disabled:opacity-50 cursor-pointer"
           >
-            <ShieldAlert className="w-4 h-4" />
-            <span>{isAuditing ? 'Auditoría en curso...' : 'Ejecutar Auditoría MikroTik'}</span>
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>{isAuditing ? 'Analizando...' : 'Analizar'}</span>
           </button>
 
           <button
-            onClick={() => openModal('newIncident')}
-            className="px-3.5 py-2 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#E0E7FF] border border-[#1E293B] font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            id="btn-prepare-backup-proposal"
+            onClick={() => setShowBackupProposalModal(true)}
+            className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-green-400" />
-            <span>Nuevo Incidente</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>Preparar propuesta</span>
+          </button>
+
+          <button
+            id="btn-request-dryrun"
+            onClick={handleRequestDryRun}
+            className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5" />
+            <span>Solicitar dry-run</span>
+          </button>
+
+          <button
+            id="btn-send-approval"
+            onClick={handleSendToApproval}
+            className="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Enviar a aprobación</span>
+          </button>
+
+          <button
+            id="btn-view-evidence"
+            onClick={() => setShowEvidenceModal(true)}
+            className="px-3 py-1.5 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#E0E7FF] border border-[#1E293B] font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5 text-slate-400" />
+            <span>Ver evidencia</span>
           </button>
         </div>
+      </div>
+
+      {/* Explicit Permanent Proposal Warning Banner */}
+      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-xs text-amber-200">
+        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+        <span>
+          <strong>Regla Operativa WISP:</strong> Esta propuesta no se ejecuta desde NUGA Team Console. Requiere validación humana y aplicación mediante el procedimiento operativo autorizado.
+        </span>
       </div>
 
       {/* Navigation Sub-Tabs */}
@@ -163,6 +230,9 @@ export const OperacionesWispScreen: React.FC = () => {
                       <span className="text-xs font-mono font-bold text-white px-2 py-0.5 rounded bg-[#0A141D] border border-[#1E293B]">
                         {router.id}
                       </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        DEMO
+                      </span>
                       <span className="text-[11px] font-mono text-blue-400 font-semibold">{ipDisplay}</span>
                     </div>
 
@@ -198,6 +268,9 @@ export const OperacionesWispScreen: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-mono font-bold text-blue-400">{selectedRouter.id}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      DEMO
+                    </span>
                     <span className="text-xs text-[#64748B] font-mono">
                       {selectedRouter.interfaces?.[0]?.ipAddress || (selectedRouter as any).ip || '192.0.2.1'}
                     </span>
@@ -321,7 +394,12 @@ export const OperacionesWispScreen: React.FC = () => {
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono font-bold text-blue-400">{tower.id}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-bold text-blue-400">{tower.id}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      DEMO
+                    </span>
+                  </div>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       tower.status === 'online'
@@ -368,7 +446,12 @@ export const OperacionesWispScreen: React.FC = () => {
           {links.map(link => (
             <div key={link.id} className="p-4 rounded-xl bg-[#111D27] border border-[#1E293B] shadow-lg shadow-black/40 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-blue-400">{link.id}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-mono font-bold text-blue-400">{link.id}</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    DEMO
+                  </span>
+                </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
                   {link.status.toUpperCase()}
                 </span>
@@ -404,6 +487,16 @@ export const OperacionesWispScreen: React.FC = () => {
       {/* TAB 4: Incidentes */}
       {activeTab === 'incidents' && (
         <div className="space-y-3">
+          <div className="flex justify-end">
+            <button
+              onClick={() => openModal('newIncident')}
+              className="px-3.5 py-2 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#E0E7FF] border border-[#1E293B] font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-green-400" />
+              <span>Nuevo Incidente DEMO</span>
+            </button>
+          </div>
+
           {incidents.map(inc => (
             <div
               key={inc.id}
@@ -414,6 +507,9 @@ export const OperacionesWispScreen: React.FC = () => {
                   <span className="text-xs font-mono font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
                     {inc.code}
                   </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    DEMO
+                  </span>
                   <h4 className="text-sm font-bold text-white">{inc.title}</h4>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">
@@ -421,7 +517,7 @@ export const OperacionesWispScreen: React.FC = () => {
                 </span>
               </div>
 
-              <p className="text-xs text-[#94A3B8] leading-relaxed">{inc.description}</p>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">{inc.diagnosis}</p>
 
               <div className="text-xs bg-[#0A141D] p-3 rounded-lg border border-[#1E293B] space-y-1">
                 <span className="font-bold text-[#64748B] text-[10px] uppercase tracking-wider block">Línea de Tiempo del Incidente:</span>
@@ -435,6 +531,160 @@ export const OperacionesWispScreen: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* MODAL: Preparar Propuesta de Respaldo */}
+      {showBackupProposalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100">Propuesta de Respaldo Seguro RouterOS</h3>
+                  <span className="text-[11px] text-slate-400">Documento técnico estructurado para autorización</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBackupProposalModal(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Warning Banner */}
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block font-semibold">Aviso de Seguridad:</strong>
+                <span>Esta propuesta no se ejecuta desde NUGA Team Console. Requiere validación humana y aplicación mediante el procedimiento operativo autorizado.</span>
+              </div>
+            </div>
+
+            {/* 8 Structured Proposal Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">1. Objetivo</span>
+                <p className="text-slate-200 font-medium">Generación y resguardo de backup cifrado y export compacto de configuración.</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">2. Dispositivo</span>
+                <p className="text-slate-200 font-mono font-medium">{selectedRouter.identity || selectedRouter.id} ({selectedRouter.model})</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">3. Alcance</span>
+                <p className="text-slate-200">Exportación de configuración (/export compact hide-sensitive) y archivo binario de estado.</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">4. Nivel de Riesgo</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[10px]">
+                  Bajo / Informativo (Operación de sólo lectura)
+                </span>
+              </div>
+
+              <div className="md:col-span-2 p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400">5. Comandos No Ejecutables (Informativo)</span>
+                <pre className="p-2.5 rounded-lg bg-slate-900 text-sky-300 font-mono text-[11px] overflow-x-auto border border-slate-800">
+{`/system backup save name=backup-${selectedRouter.id}-\${TIMESTAMP} encryption=aes-sha256 password=***
+/export file=export-${selectedRouter.id}-\${TIMESTAMP} compact hide-sensitive`}
+                </pre>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">6. Validación</span>
+                <p className="text-slate-300">Verificación de checksum SHA-256 generado localmente y comprobación de tamaño mayor a 0 KB.</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">7. Procedimiento de Rollback</span>
+                <p className="text-slate-300">No aplica alteración de estado. En caso de fallo de export, reintentar fuera de horas pico.</p>
+              </div>
+
+              <div className="md:col-span-2 p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">8. Autorización Requerida</span>
+                <p className="text-slate-300">Aprobación explícita por Ramiro (Propietario) con registro en bitácora local DEMO.</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <button
+                onClick={() => setShowBackupProposalModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  setShowBackupProposalModal(false);
+                  handleSendToApproval();
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Enviar a Panel de Decisiones</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Ver Evidencia */}
+      {showEvidenceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-teal-400" />
+                <h3 className="text-sm font-bold text-slate-100">Evidencia de Auditoría RouterOS</h3>
+              </div>
+              <button
+                onClick={() => setShowEvidenceModal(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-[11px] block">Router Consultado:</span>
+                <strong className="text-slate-200 font-mono">{selectedRouter.identity || selectedRouter.id}</strong>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-[11px] block">Registro de Evidencia (DEMO):</span>
+                <p className="text-slate-300 leading-relaxed">
+                  Captura de configuración firewall filter correspondiente a la regla #4 que expone el puerto 8291 en WAN sin restricción de IP de origen.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-[11px] block">Hash de Verificación Local:</span>
+                <code className="text-teal-400 font-mono text-[10px] break-all block">
+                  sha256:d8e8fca2dc0f896fd7cb4cb0031ba249
+                </code>
+                <span className="text-[10px] text-slate-400 block pt-1">
+                  Hash calculado localmente en el navegador; no constituye firma digital ni evidencia de servidor.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-800">
+              <button
+                onClick={() => setShowEvidenceModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
