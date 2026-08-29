@@ -1,0 +1,358 @@
+import React, { useState } from 'react';
+import {
+  Bot,
+  Shield,
+  Sliders,
+  MessageSquare,
+  Wrench,
+  Cpu,
+  CheckCircle2,
+  AlertCircle,
+  FileCode,
+  Sparkles,
+  Zap,
+  Radio,
+  Briefcase,
+  Code2,
+  ExternalLink
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { AgentProfile, AgentRole } from '../../types';
+
+export const EquipoIAScreen: React.FC = () => {
+  const { agents, updateAgent, setCurrentScreen, setSelectedAgentId, conversations } = useApp();
+  const [selectedAgent, setSelectedAgent] = useState<AgentProfile>(agents[0]);
+  const [isEditingPrompt, setIsEditingPrompt] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState(selectedAgent.systemInstructions);
+
+  const handleSelectAgent = (agent: AgentProfile) => {
+    setSelectedAgent(agent);
+    setCustomPrompt(agent.systemInstructions);
+    setIsEditingPrompt(false);
+  };
+
+  const handleSavePrompt = () => {
+    updateAgent(selectedAgent.id, { systemInstructions: customPrompt });
+    setIsEditingPrompt(false);
+    setSelectedAgent(prev => ({ ...prev, systemInstructions: customPrompt }));
+  };
+
+  const handleAutonomyChange = (level: AgentProfile['autonomyLevel']) => {
+    updateAgent(selectedAgent.id, { autonomyLevel: level });
+    setSelectedAgent(prev => ({ ...prev, autonomyLevel: level }));
+  };
+
+  return (
+    <div id="screen-equipo-ia" className="space-y-6 pb-12 animate-in fade-in duration-200">
+      {/* Organigram & Structure Header */}
+      <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center shrink-0">
+              <Bot className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-100">Organigrama del Sistema Hermes</h2>
+              <p className="text-xs text-slate-400">
+                Estructura de orquestación, perfiles especializados, límites de autonomía y permisos de herramientas
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+              5 Especialistas Conectados
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Visual Organigram Cards Selector */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {(agents || []).map(agent => {
+          const isSelected = selectedAgent?.id === agent.id;
+          const isDirector = agent.id === 'director';
+
+          return (
+            <div
+              key={agent.id}
+              onClick={() => handleSelectAgent(agent)}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                isSelected
+                  ? 'bg-slate-800 border-sky-500 shadow-xl shadow-sky-950/40 ring-1 ring-sky-500/40'
+                  : 'bg-slate-900/80 border-slate-800/80 hover:border-slate-700'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <img
+                    src={agent.avatar}
+                    alt={agent.name}
+                    className="w-11 h-11 rounded-xl object-cover ring-2 ring-slate-700 shrink-0"
+                  />
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isDirector
+                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                        : 'bg-slate-800 text-slate-300 border border-slate-700'
+                    }`}
+                  >
+                    {isDirector ? 'ORQUESTADOR' : 'ESPECIALISTA'}
+                  </span>
+                </div>
+
+                <h3 className="text-sm font-bold text-slate-100">{agent.name}</h3>
+                <p className="text-xs text-sky-400 font-medium line-clamp-1 mt-0.5">{agent.roleTitle}</p>
+                <p className="text-[11px] text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+                  {agent.shortDescription}
+                </p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px]">
+                <span className="text-slate-400 font-mono">{agent.modelEngine ? agent.modelEngine.split(' ')[0] : 'Gemini'}</span>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    agent.status === 'active'
+                      ? 'bg-emerald-400'
+                      : agent.status === 'waiting_approval'
+                      ? 'bg-amber-400'
+                      : 'bg-sky-400'
+                  }`}
+                  title={agent.status}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Selected Agent Detailed Inspector */}
+      {selectedAgent && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Col: Responsibilities, Scopes, Tools (7 cols) */}
+          <div className="lg:col-span-7 space-y-5">
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
+              {/* Header info */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={selectedAgent.avatar}
+                    alt={selectedAgent.name}
+                    className="w-14 h-14 rounded-2xl object-cover ring-2 ring-sky-500/40"
+                  />
+                  <div>
+                    <h3 className="text-lg font-extrabold text-slate-100">{selectedAgent.name}</h3>
+                    <p className="text-xs text-sky-400 font-semibold">{selectedAgent.roleTitle}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Motor: {selectedAgent.modelEngine}</p>
+                  </div>
+                </div>
+
+                <button
+                  id="btn-chat-with-agent"
+                  onClick={() => {
+                    setSelectedAgentId(selectedAgent.id);
+                    setCurrentScreen('conversaciones');
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-sky-500/20 shrink-0"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Abrir Chat Directo</span>
+                </button>
+              </div>
+
+              {/* Objectives and Mission */}
+              <div>
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Objetivo & Misión:</span>
+                <p className="text-xs text-slate-300 mt-1.5 leading-relaxed bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/60">
+                  {selectedAgent.description}
+                </p>
+              </div>
+
+              {/* Key Responsibilities */}
+              <div>
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Responsabilidades Principales:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                  {(selectedAgent.responsibilities || []).map((resp, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60 text-xs text-slate-200 flex items-start gap-2"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
+                      <span>{resp}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Allowed Scopes & Sandbox Rules */}
+              <div>
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Alcances & Políticas de Seguridad:</span>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(selectedAgent.allowedScopes || []).map((scope, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono"
+                    >
+                      {scope}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tools permitted */}
+              <div>
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5 text-sky-400" />
+                  Herramientas Asignadas (MCP & SDKs):
+                </span>
+                <div className="space-y-2 mt-2">
+                  {(selectedAgent.tools || []).map((t, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs flex items-center justify-between"
+                    >
+                      <div>
+                        <span className="font-mono font-bold text-sky-300">{t.name}</span>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{t.description}</p>
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          t.riskLevel === 'high'
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : t.riskLevel === 'medium'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        }`}
+                      >
+                        Riesgo {t.riskLevel.toUpperCase()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+        {/* Right Col: Autonomy Controls & System Prompt Editor (5 cols) */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Autonomy Level Box */}
+          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div>
+              <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-sky-400" />
+                Nivel de Autonomía Operativa
+              </h4>
+              <p className="text-xs text-slate-400 mt-1">
+                Define el grado de libertad del agente antes de requerir confirmación humana obligatoria.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => handleAutonomyChange('supervisado')}
+                className={`w-full p-3 rounded-xl border text-left text-xs transition-all ${
+                  selectedAgent.autonomyLevel === 'supervisado'
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-200 ring-1 ring-amber-500/30'
+                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between font-bold text-slate-200">
+                  <span>1. Supervisión Total (Recomendado)</span>
+                  {selectedAgent.autonomyLevel === 'supervisado' && <CheckCircle2 className="w-4 h-4 text-amber-400" />}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Todas las acciones de lectura y escritura pasan por la bandeja de decisiones de Ramiro.
+                </p>
+              </button>
+
+              <button
+                onClick={() => handleAutonomyChange('semi-autonomo')}
+                className={`w-full p-3 rounded-xl border text-left text-xs transition-all ${
+                  selectedAgent.autonomyLevel === 'semi-autonomo'
+                    ? 'bg-sky-500/15 border-sky-500 text-sky-200 ring-1 ring-sky-500/30'
+                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between font-bold text-slate-200">
+                  <span>2. Semi-Autónomo (Autonomía Media)</span>
+                  {selectedAgent.autonomyLevel === 'semi-autonomo' && <CheckCircle2 className="w-4 h-4 text-sky-400" />}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Acciones de bajo riesgo y lectura automática. Solo acciones críticas requieren confirmación.
+                </p>
+              </button>
+
+              <button
+                onClick={() => handleAutonomyChange('autonomo')}
+                className={`w-full p-3 rounded-xl border text-left text-xs transition-all ${
+                  selectedAgent.autonomyLevel === 'autonomo'
+                    ? 'bg-emerald-500/15 border-emerald-500 text-emerald-200 ring-1 ring-emerald-500/30'
+                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between font-bold text-slate-200">
+                  <span>3. Autónomo (Modo Laboratorio)</span>
+                  {selectedAgent.autonomyLevel === 'autonomo' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Ejecución autónoma en sandbox con registro continuo en bitácora de auditoría.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* System Prompt & Instructions Editor */}
+          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                  <FileCode className="w-4 h-4 text-sky-400" />
+                  Instrucciones del Sistema (System Prompt)
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">Comportamiento base del agente</p>
+              </div>
+
+              {!isEditingPrompt ? (
+                <button
+                  onClick={() => setIsEditingPrompt(true)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 font-semibold text-xs transition-colors"
+                >
+                  Editar
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsEditingPrompt(false)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSavePrompt}
+                    className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {isEditingPrompt ? (
+              <textarea
+                value={customPrompt}
+                onChange={e => setCustomPrompt(e.target.value)}
+                rows={8}
+                className="w-full p-3 rounded-xl bg-slate-950 border border-sky-500/50 text-slate-200 font-mono text-xs focus:outline-none custom-scrollbar"
+              />
+            ) : (
+              <pre className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 font-mono text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-56 custom-scrollbar">
+                {selectedAgent.systemPrompt}
+              </pre>
+            )}
+          </div>
+        </div>
+      </div>
+      )}
+    </div>
+  );
+};

@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+:root {
+  --bg-canvas: #050B10;
+  --bg-sidebar: #0A141D;
+  --bg-topbar: #0A141D;
+  --bg-card: #111D27;
+  --bg-subcard: #0A141D;
+  --border-bento: #1E293B;
+  --border-subtle: #334155;
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --color-scheme: dark;
+}
+
+html.light,
+body.light,
+.light {
+  --bg-canvas: #F1F5F9;
+  --bg-sidebar: #FFFFFF;
+  --bg-topbar: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-subcard: #F8FAFC;
+  --border-bento: #E2E8F0;
+  --border-subtle: #CBD5E1;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --color-scheme: light;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Bento Theme Utilities */
+.bg-bento-canvas {
+  background-color: var(--bg-canvas);
+}
+
+.bg-bento-sidebar {
+  background-color: var(--bg-sidebar);
+}
+
+.bg-bento-card {
+  background-color: var(--bg-card);
+}
+
+.bg-bento-subcard {
+  background-color: var(--bg-subcard);
+}
+
+.border-bento {
+  border-color: var(--border-bento);
+}
+
+.border-bento-subtle {
+  border-color: var(--border-subtle);
+}
+
+.text-bento-muted {
+  color: var(--text-muted);
+}
+
+.text-bento-secondary {
+  color: var(--text-secondary);
+}
+
+.text-bento-primary {
+  color: var(--text-primary);
+}
+
+/* Automatic Light Mode Adaptive Overrides for High Legibility */
+html.light .bg-\[\#050B10\],
+html.light .bg-\[\#050b10\] {
+  background-color: #F1F5F9 !important;
+}
+
+html.light .bg-\[\#0A141D\],
+html.light .bg-\[\#0a141d\] {
+  background-color: #FFFFFF !important;
+}
+
+html.light .bg-\[\#111D27\],
+html.light .bg-\[\#111d27\] {
+  background-color: #FFFFFF !important;
+}
+
+html.light .bg-\[\#081017\],
+html.light .bg-\[\#081017\] {
+  background-color: #F8FAFC !important;
+}
+
+html.light .border-\[\#1E293B\],
+html.light .border-\[\#1e293b\] {
+  border-color: #E2E8F0 !important;
+}
+
+html.light .border-\[\#334155\] {
+  border-color: #CBD5E1 !important;
+}
+
+html.light .text-\[\#E0E7FF\],
+html.light .text-\[\#e0e7ff\],
+html.light .text-\[\#F1F5F9\],
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-white {
+  color: #0F172A;
+}
+
+/* Keep white text on explicit dark/colored buttons or badges */
+html.light .bg-blue-600 .text-white,
+html.light .bg-blue-500 .text-white,
+html.light .bg-rose-600 .text-white,
+html.light .bg-rose-500 .text-white,
+html.light .bg-emerald-600 .text-white,
+html.light .bg-emerald-500 .text-white,
+html.light .bg-amber-600 .text-white,
+html.light .bg-amber-500 .text-white,
+html.light .bg-red-600 .text-white,
+html.light button.bg-blue-600,
+html.light button.bg-blue-700,
+html.light button.bg-rose-600,
+html.light button.bg-emerald-600,
+html.light .badge-solid {
+  color: #FFFFFF !important;
+}
+
+html.light .text-\[\#94A3B8\],
+html.light .text-\[\#94a3b8\] {
+  color: #475569 !important;
+}
+
+html.light .text-\[\#64748B\],
+html.light .text-\[\#64748b\] {
+  color: #64748B !important;
+}
+
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+html.light pre,
+html.light code.font-mono {
+  background-color: #F1F5F9;
+  color: #0F172A;
+  border-color: #E2E8F0;
+}
+
+/* Custom Bento scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-bento);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--border-subtle);
+}

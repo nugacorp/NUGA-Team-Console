@@ -1,0 +1,6 @@
+{
+  "name": "NUGA Team Console",
+  "description": "Centro privado de operaciones, decisiones y agentes de NUGA",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
