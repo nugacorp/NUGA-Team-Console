@@ -20,8 +20,10 @@ import { useApp, ScreenId } from '../../context/AppContext';
 import { HermesStatus } from '../../types';
 import { APP_INFO } from '../../constants';
 import { EnvironmentSelector } from './EnvironmentSelector';
+import { useAuth } from '../../auth/AuthGate';
 
 export const Topbar: React.FC = () => {
+  const { logout } = useAuth();
   const {
     currentScreen,
     setCurrentScreen,
@@ -75,8 +77,12 @@ export const Topbar: React.FC = () => {
     configuracion: { title: 'Configuración de la Consola', subtitle: 'Modelos, políticas de seguridad, MCP y sandbox' }
   };
 
-  const handleLogoutDemo = () => {
+  const handleLogout = () => {
     setIsUserMenuOpen(false);
+    if (!isDemo) {
+      void logout();
+      return;
+    }
     addToast({
       title: 'Sesión DEMO',
       message: 'En este entorno de demostración local, la sesión de Ramiro permanece activa para interactuar con la consola.',
@@ -467,7 +473,7 @@ export const Topbar: React.FC = () => {
                 {/* Cerrar Sesión DEMO */}
                 <div className="pt-1 mt-1 border-t border-[#1E293B]">
                   <button
-                    onClick={handleLogoutDemo}
+                    onClick={handleLogout}
                     className="w-full px-4 py-2 text-left text-xs text-rose-400 hover:bg-[#0A141D] flex items-center gap-2.5 cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -482,4 +488,3 @@ export const Topbar: React.FC = () => {
     </header>
   );
 };
-
