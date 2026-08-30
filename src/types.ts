@@ -181,8 +181,10 @@ export interface Decision {
   status: DecisionStatus;
   /** Motivo explícito registrado si la decisión fue rechazada */
   rejectionReason?: string;
-  /** Token o texto de confirmación reforzada si la decisión era de riesgo crítico */
-  confirmationToken?: string;
+  /** Estado de verificación reforzada para decisiones críticas (sin almacenar texto ni tokens) */
+  confirmationVerified?: boolean;
+  confirmationVerifiedAt?: string;
+  confirmationVerifiedBy?: string;
   history: DecisionActionLog[];
   createdAt: string;
   isDemo?: boolean;

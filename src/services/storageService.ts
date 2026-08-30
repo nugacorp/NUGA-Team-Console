@@ -277,13 +277,16 @@ export class StorageService {
           action: actionLabel,
           user: 'Ramiro (Propietario)',
           timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          comment: comment || (confirmationText ? `Confirmación requerida: "${confirmationText}"` : undefined)
+          comment: comment || (confirmationText ? 'Confirmación reforzada verificada' : undefined)
         };
 
         updatedDecision = {
           ...d,
           status: newStatus,
           rejectionReason: action === 'reject' ? comment : d.rejectionReason,
+          confirmationVerified: confirmationText ? true : d.confirmationVerified,
+          confirmationVerifiedAt: confirmationText ? new Date().toISOString() : d.confirmationVerifiedAt,
+          confirmationVerifiedBy: confirmationText ? 'Ramiro (Propietario)' : d.confirmationVerifiedBy,
           history: [logEntry, ...d.history]
         };
         return updatedDecision;

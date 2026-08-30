@@ -10,6 +10,7 @@ import { createProviders } from '../providers';
 import { DemoTasksProvider, DemoDecisionsProvider } from '../providers/demo';
 import { ApiTasksProvider, ApiDecisionsProvider, HttpClient } from '../providers/api';
 import { checkServerHealth } from '../services/healthCheckService';
+import { storageService } from '../services/storageService';
 import { ServerStatusContract } from '../types';
 
 describe('Architecture of Interchangeable Modes (demo, staging, production)', () => {
@@ -214,6 +215,38 @@ describe('Architecture of Interchangeable Modes (demo, staging, production)', ()
       expect(health.status).toBe('ok');
       expect(health.serverContract.mode).toBe('demo');
       expect(health.serverContract.hermes).toBe('not_connected');
+    });
+  });
+
+  describe('8. Zero Secret & Credential Persistence in DEMO Decisions', () => {
+    it('does not persist raw confirmation tokens, passwords or secrets in decision objects or localStorage', () => {
+      const decisions = storageService.getDecisions();
+      const targetDecision = decisions[0];
+
+      // Execute reinforced approval simulation with a sample confirmation phrase
+      const result = storageService.executeDecisionAction(
+        targetDecision.id,
+        'approve',
+        'Aprobación autorizada',
+        'CONFIRMAR_APROBACION_CRITICA_12345'
+      );
+
+      expect(result.updatedDecision).toBeDefined();
+      const updated = result.updatedDecision!;
+
+      // Verify that no raw confirmation token property exists on the object
+      expect((updated as any).confirmationToken).toBeUndefined();
+      expect((updated as any).secret).toBeUndefined();
+      expect((updated as any).password).toBeUndefined();
+
+      // Verify legitimate non-secret audit state is registered
+      expect(updated.confirmationVerified).toBe(true);
+      expect(updated.confirmationVerifiedBy).toBe('Ramiro (Propietario)');
+      expect(typeof updated.confirmationVerifiedAt).toBe('string');
+
+      // Verify localStorage payload is clean from secret tokens
+      const rawStored = localStorage.getItem('nuga_decisions') || '';
+      expect(rawStored).not.toContain('CONFIRMAR_APROBACION_CRITICA_12345');
     });
   });
 });
