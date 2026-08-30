@@ -96,7 +96,12 @@ export class HttpClient {
   }
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<ProviderResult<T>> {
-    const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const requestedPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const normalizedPath =
+      this.baseUrl.endsWith('/api') && requestedPath.startsWith('/api/')
+        ? requestedPath.slice('/api'.length)
+        : requestedPath;
+    const url = `${this.baseUrl}${normalizedPath}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
