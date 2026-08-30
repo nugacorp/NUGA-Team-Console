@@ -13,12 +13,12 @@ export interface ApiErrorBody {
 }
 
 export function createServerStatusContract(
-  config: Pick<ServerConfig, 'mode'>
+  config: Pick<ServerConfig, 'mode' | 'hermesReadOnlyEnabled'>
 ): ServerStatusContract {
   return {
     mode: config.mode,
     source: 'server',
-    hermes: 'unavailable',
+    hermes: config.hermesReadOnlyEnabled ? 'available' : 'unavailable',
     writesEnabled: false,
     integrations: {
       nugacore: false,
@@ -29,10 +29,11 @@ export function createServerStatusContract(
 }
 
 export function createServerCapabilities(
-  _mode: ServerMode
+  _mode: ServerMode,
+  hermesReadOnlyEnabled = false
 ): BackendCapabilities {
   return {
-    canReadRealData: false,
+    canReadRealData: hermesReadOnlyEnabled,
     canRequestDryRun: false,
     canSubmitApproval: false,
     canExecuteAuthorizedOperation: false

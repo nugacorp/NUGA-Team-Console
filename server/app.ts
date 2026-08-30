@@ -22,6 +22,7 @@ import {
   isMutationMethod,
   validateModeHeader
 } from './contracts';
+import { HermesReadOnlyAdapter, HermesReadOnlyError } from './hermesReadOnlyAdapter';
 
 const API_PREFIX = '/api/v1';
 
@@ -29,9 +30,23 @@ function getSession(response: Response): AuthSession | null {
   return (response.locals as { authSession?: AuthSession }).authSession ?? null;
 }
 
-export function createApp(config: ServerConfig) {
+export interface AppDependencies {
+  hermesAdapter?: HermesReadOnlyAdapter;
+}
+
+export function createApp(config: ServerConfig, dependencies: AppDependencies = {}) {
   const app = express();
   const secureCookies = config.publicOrigin.startsWith('https://');
+  const hermesAdapter = dependencies.hermesAdapter ?? (
+    config.hermesReadOnlyEnabled
+      ? new HermesReadOnlyAdapter({
+          binary: config.hermesBinary,
+          boards: config.hermesBoards,
+          timeoutMs: 8_000,
+          maxTasks: 500
+        })
+      : null
+  );
 
   app.disable('x-powered-by');
   app.use(express.json({ limit: '256kb', strict: true }));
@@ -78,7 +93,7 @@ export function createApp(config: ServerConfig) {
   });
 
   app.get(`${API_PREFIX}/capabilities`, (_request, response) => {
-    response.status(200).json(createServerCapabilities(config.mode));
+    response.status(200).json(createServerCapabilities(config.mode, config.hermesReadOnlyEnabled));
   });
 
   app.post(`${API_PREFIX}/auth/login`, (request, response) => {
@@ -196,7 +211,35 @@ export function createApp(config: ServerConfig) {
     );
   };
 
+  const hermesRead = (
+    operation: () => Promise<unknown>
+  ) => async (_request: Request, response: Response) => {
+    if (!hermesAdapter) {
+      hermesUnavailable(_request, response);
+      return;
+    }
+    try {
+      response.status(200).json(await operation());
+    } catch (error) {
+      const denied = error instanceof HermesReadOnlyError && error.code === 'DENIED';
+      response.status(denied ? 403 : 503).json(
+        apiError(
+          denied ? 'HERMES_SCOPE_DENIED' : 'HERMES_READ_UNAVAILABLE',
+          denied ? 'El recurso Hermes está fuera del alcance permitido.' : 'Hermes no está disponible para lectura.'
+        )
+      );
+    }
+  };
+
   app.get(`${API_PREFIX}/agents`, requireSession, hermesUnavailable);
+  app.get(`${API_PREFIX}/hermes/boards`, requireSession, hermesRead(() => hermesAdapter!.listBoards()));
+  app.get(`${API_PREFIX}/hermes/tasks`, requireSession, hermesRead(() => hermesAdapter!.listTasks()));
+  app.get(`${API_PREFIX}/hermes/boards/:board/tasks/:id`, requireSession, (request, response) =>
+    hermesRead(() => hermesAdapter!.getTask(request.params.board, request.params.id))(request, response)
+  );
+  app.get(`${API_PREFIX}/hermes/boards/:board/tasks/:id/runs`, requireSession, (request, response) =>
+    hermesRead(() => hermesAdapter!.getRuns(request.params.board, request.params.id))(request, response)
+  );
   app.get(`${API_PREFIX}/tasks`, requireSession, hermesUnavailable);
   app.get(`${API_PREFIX}/tasks/:id`, requireSession, hermesUnavailable);
   app.get(`${API_PREFIX}/tasks/:id/runs`, requireSession, hermesUnavailable);

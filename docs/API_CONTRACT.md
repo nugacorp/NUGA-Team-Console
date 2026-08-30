@@ -151,3 +151,20 @@ Los campos de tarea que no existen en Hermes se clasifican como derivados,
 extensiones de consola o no disponibles. La matriz normativa está en
 `docs/DATA_OWNERSHIP_MATRIX.md` y su contrato ejecutable en
 `src/contracts/dataOwnership.ts`.
+
+## 10. Adaptador Hermes read-only
+
+El adaptador usa exclusivamente comandos oficiales `hermes kanban ... --json`
+con binario, tableros, timeout y límite de resultados configurados en servidor.
+No invoca gateway, `serve`, agentes, RouterOS ni subcomandos mutables.
+
+Rutas fuente protegidas por sesión:
+
+- `GET /api/v1/hermes/boards`
+- `GET /api/v1/hermes/tasks`
+- `GET /api/v1/hermes/boards/:board/tasks/:id`
+- `GET /api/v1/hermes/boards/:board/tasks/:id/runs`
+
+Estas rutas conservan el contrato Hermes sin inventar extensiones visuales. La
+ruta compuesta `/api/v1/tasks` permanece cerrada hasta incorporar de forma
+explícita los campos derivados y la persistencia propia de NUGA Console.

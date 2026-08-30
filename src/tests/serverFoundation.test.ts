@@ -21,7 +21,10 @@ function testConfig(): ServerConfig {
     publicOrigin: 'http://127.0.0.1:3000',
     sessionSecret: 'test-only-secret-with-at-least-32-characters',
     ownerUsername: 'ramiro',
-    ownerPasswordHash: TEST_HASH
+    ownerPasswordHash: TEST_HASH,
+    hermesReadOnlyEnabled: false,
+    hermesBinary: '/test/hermes',
+    hermesBoards: []
   };
 }
 
