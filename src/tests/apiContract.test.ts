@@ -46,7 +46,7 @@ describe('NUGA API v1 staging boundary', () => {
     await client.request('/api/v1/tasks');
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/api/v1/tasks',
+      '/api/v1/tasks',
       expect.objectContaining({
         credentials: 'include',
         cache: 'no-store',
