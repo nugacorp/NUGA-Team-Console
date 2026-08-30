@@ -43,6 +43,11 @@ import {
   AuditRecordPayload,
   AppMode
 } from '../../types';
+import {
+  parseBackendCapabilities,
+  parseServerStatusContract,
+  toDecisionActionRequest
+} from './contracts';
 
 export class ApiError extends Error {
   constructor(
@@ -91,12 +96,18 @@ export class HttpClient {
   }
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<ProviderResult<T>> {
-    const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const requestedPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const normalizedPath =
+      this.baseUrl.endsWith('/api') && requestedPath.startsWith('/api/')
+        ? requestedPath.slice('/api'.length)
+        : requestedPath;
+    const url = `${this.baseUrl}${normalizedPath}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
       const headers: Record<string, string> = {
+        Accept: 'application/json',
         'Content-Type': 'application/json',
         'X-Nuga-Mode': this.mode,
         ...(options.headers as Record<string, string> || {})
@@ -105,6 +116,8 @@ export class HttpClient {
       const response = await fetch(url, {
         ...options,
         headers,
+        credentials: 'include',
+        cache: 'no-store',
         signal: controller.signal
       });
 
@@ -238,7 +251,7 @@ export class ApiDecisionsProvider implements DecisionsProvider {
   ): Promise<ProviderResult<Decision>> {
     return this.client.request<Decision>(`/api/v1/decisions/${id}/action`, {
       method: 'POST',
-      body: JSON.stringify({ action, comment, confirmationText })
+      body: JSON.stringify(toDecisionActionRequest(action, comment, confirmationText))
     });
   }
 
@@ -493,11 +506,35 @@ export class ApiConfigurationProvider implements ConfigurationProvider {
   }
 
   async getServerStatus(): Promise<ProviderResult<ServerStatusContract>> {
-    return this.client.request<ServerStatusContract>('/api/v1/status');
+    const response = await this.client.request<unknown>('/api/v1/status');
+    if (response.status !== 'success') return response as ProviderResult<ServerStatusContract>;
+
+    const contract = parseServerStatusContract(response.data);
+    if (!contract || contract.source !== 'server') {
+      return {
+        status: 'error',
+        error: 'El backend devolvió un contrato de estado inválido.',
+        isDemo: false
+      };
+    }
+
+    return { ...response, data: contract };
   }
 
   async getCapabilities(): Promise<ProviderResult<BackendCapabilities>> {
-    return this.client.request<BackendCapabilities>('/api/v1/capabilities');
+    const response = await this.client.request<unknown>('/api/v1/capabilities');
+    if (response.status !== 'success') return response as ProviderResult<BackendCapabilities>;
+
+    const capabilities = parseBackendCapabilities(response.data);
+    if (!capabilities) {
+      return {
+        status: 'error',
+        error: 'El backend devolvió un contrato de capacidades inválido.',
+        isDemo: false
+      };
+    }
+
+    return { ...response, data: capabilities };
   }
 
   async getNotifications(): Promise<ProviderResult<AppNotification[]>> {
