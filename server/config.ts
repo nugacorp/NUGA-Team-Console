@@ -8,6 +8,9 @@ export interface ServerConfig {
   sessionSecret: string;
   ownerUsername: string;
   ownerPasswordHash: string;
+  hermesReadOnlyEnabled: boolean;
+  hermesBinary: string;
+  hermesBoards: string[];
 }
 
 export class ServerConfigurationError extends Error {
@@ -80,6 +83,17 @@ export function loadServerConfig(
     );
   }
 
+  const hermesReadOnlyEnabled = environment.NUGA_HERMES_READ_ONLY_ENABLED === 'true';
+  const hermesBoards = (environment.NUGA_HERMES_BOARDS ?? '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  if (hermesReadOnlyEnabled && !hermesBoards.length) {
+    throw new ServerConfigurationError(
+      'NUGA_HERMES_BOARDS es obligatorio cuando la lectura Hermes está habilitada.'
+    );
+  }
+
   return {
     mode: parseServerMode(environment.NUGA_SERVER_MODE),
     host: environment.NUGA_SERVER_HOST || '127.0.0.1',
@@ -87,6 +101,9 @@ export function loadServerConfig(
     publicOrigin: parseOrigin(environment.NUGA_PUBLIC_ORIGIN),
     sessionSecret,
     ownerUsername,
-    ownerPasswordHash
+    ownerPasswordHash,
+    hermesReadOnlyEnabled,
+    hermesBinary: environment.NUGA_HERMES_BINARY || '/home/ramiro/.local/bin/hermes',
+    hermesBoards
   };
 }
