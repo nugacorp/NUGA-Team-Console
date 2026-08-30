@@ -139,3 +139,15 @@ de aceptar la decisión. Aprobar una propuesta no autoriza ejecutar cambios exte
 5. Logs sanitizados y correlacionados.
 6. Hermes limitado inicialmente a lectura, creación de tareas y comentarios.
 7. MikroMCP, RouterOS y Google permanecen desconectados.
+
+## 9. Propiedad y composición de datos
+
+Hermes es la autoridad de perfiles, tableros, tareas, comentarios y runs. NUGA
+Console es la autoridad de decisiones, auditoría, campañas, incidentes,
+entregables, notificaciones y administración. El backend puede componer ambos
+orígenes, pero no permite escrituras duplicadas.
+
+Los campos de tarea que no existen en Hermes se clasifican como derivados,
+extensiones de consola o no disponibles. La matriz normativa está en
+`docs/DATA_OWNERSHIP_MATRIX.md` y su contrato ejecutable en
+`src/contracts/dataOwnership.ts`.
