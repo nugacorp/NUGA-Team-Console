@@ -1,5 +1,6 @@
 import { ServerStatusContract, AppMode, BackendCapabilities } from '../types';
 import { DEFAULT_MODE_CAPABILITIES } from '../config/appConfig';
+import { parseServerStatusContract } from '../providers/api/contracts';
 
 export interface HealthCheckResult {
   status: 'ok' | 'degraded' | 'unavailable' | 'incompatible';
@@ -41,7 +42,10 @@ export async function checkServerHealth(
 
     const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/v1/status`, {
       signal: controller.signal,
+      credentials: 'include',
+      cache: 'no-store',
       headers: {
+        Accept: 'application/json',
         'X-Nuga-Mode': mode
       }
     });
@@ -63,7 +67,22 @@ export async function checkServerHealth(
       };
     }
 
-    const data = (await res.json()) as ServerStatusContract;
+    const data = parseServerStatusContract(await res.json());
+
+    if (!data || data.source !== 'server') {
+      return {
+        status: 'unavailable',
+        serverContract: {
+          mode,
+          source: 'server',
+          hermes: 'unavailable',
+          writesEnabled: false,
+          integrations: { nugacore: false, mikromcp: false, google: false }
+        },
+        capabilities: DEFAULT_MODE_CAPABILITIES[mode],
+        message: 'El servidor devolvió un contrato de estado inválido.'
+      };
+    }
 
     if (data.mode !== mode) {
       return {
