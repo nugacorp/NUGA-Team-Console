@@ -127,7 +127,7 @@ ${decision.exactChangeDiff || decision.proposal}
                   {decision.code}
                 </span>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase font-mono ${
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-mono ${
                     isCrit
                       ? 'bg-rose-500 text-white'
                       : isHigh
@@ -135,13 +135,16 @@ ${decision.exactChangeDiff || decision.proposal}
                       : 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
                   }`}
                 >
-                  Riesgo {decision.risk}
+                  {isCrit ? 'Riesgo crítico' : isHigh ? 'Riesgo alto' : decision.risk === 'medium' ? 'Riesgo medio' : 'Riesgo bajo'}
                 </span>
-                <span className="text-[10px] font-semibold text-[#64748B] uppercase">
+                <span className="text-[10px] font-semibold text-[#94A3B8] uppercase">
                   Prioridad {decision.priority}
                 </span>
-                <span className="text-[10px] text-[#64748B]">
+                <span className="text-[10px] text-[#94A3B8]">
                   • Plazo: <strong className="text-[#E0E7FF]">{decision.deadline}</strong>
+                </span>
+                <span className="text-[10px] font-mono text-orange-400 bg-orange-500/10 px-1.5 py-0.2 rounded border border-orange-500/20">
+                  DEMO
                 </span>
               </div>
               <h3 className="text-sm sm:text-base font-bold text-white mt-1 leading-snug">
@@ -152,11 +155,20 @@ ${decision.exactChangeDiff || decision.proposal}
 
           <button
             onClick={closeModal}
-            className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors"
+            className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             title="Cerrar ventana"
+            aria-label="Cerrar ventana"
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Governance Notice Banner */}
+        <div className="px-4 py-2 bg-slate-900 border-b border-[#1E293B] text-[11px] text-[#94A3B8] flex items-center gap-2">
+          <Info className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+          <span>
+            Esta propuesta no se ejecuta desde NUGA Team Console. Requiere validación humana y aplicación mediante el procedimiento operativo autorizado.
+          </span>
         </div>
 
         {/* Modal Navigation Tabs */}

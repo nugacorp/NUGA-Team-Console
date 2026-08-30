@@ -118,10 +118,10 @@ export const TareasScreen: React.FC = () => {
             onChange={e => setFilterAgent(e.target.value)}
             className="px-3 py-1.5 rounded-lg bg-[#0A141D] border border-[#1E293B] text-xs text-[#E0E7FF] focus:outline-none focus:border-blue-500 cursor-pointer"
           >
-            <option value="all">Todos los Agentes</option>
+            <option value="all">Todos los Perfiles</option>
             {agents.map(a => (
               <option key={a.id} value={a.id}>
-                {a.name}
+                {a.name} ({a.roleTitle})
               </option>
             ))}
           </select>

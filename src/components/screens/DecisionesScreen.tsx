@@ -141,13 +141,13 @@ export const DecisionesScreen: React.FC = () => {
                       : 'bg-[#111D27] border-[#1E293B] hover:border-[#334155]'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono font-bold text-[#E0E7FF] px-2 py-0.5 rounded bg-[#0A141D] border border-[#1E293B]">
                         {decision.code}
                       </span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           isCrit
                             ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                             : isHigh
@@ -155,7 +155,7 @@ export const DecisionesScreen: React.FC = () => {
                             : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
                         }`}
                       >
-                        {decision.risk.toUpperCase()}
+                        {isCrit ? 'Riesgo crítico' : isHigh ? 'Riesgo alto' : decision.risk === 'medium' ? 'Riesgo medio' : 'Riesgo bajo'}
                       </span>
                     </div>
 
@@ -171,22 +171,27 @@ export const DecisionesScreen: React.FC = () => {
                       }`}
                     >
                       {decision.status === 'pending'
-                        ? 'Pendiente'
+                        ? 'Pendiente · DEMO'
                         : decision.status === 'approved'
-                        ? 'Aprobada'
+                        ? 'Aprobada · DEMO'
                         : decision.status === 'rejected'
-                        ? 'Rechazada'
+                        ? 'Rechazada · DEMO'
                         : decision.status === 'simulated'
-                        ? 'Simulada'
-                        : 'En Revisión'}
+                        ? 'Simulada · DEMO'
+                        : 'En Revisión · DEMO'}
                     </span>
                   </div>
 
-                  <h3 className="text-sm font-bold text-white line-clamp-1">{decision.title}</h3>
+                  <h3
+                    className="text-sm font-bold text-white line-clamp-2 mt-1 leading-snug"
+                    title={decision.title}
+                  >
+                    {decision.title}
+                  </h3>
                   <p className="text-xs text-[#94A3B8] line-clamp-2 mt-1 leading-relaxed">{decision.situation}</p>
 
                   <div className="flex items-center justify-between text-[11px] text-[#64748B] mt-3 pt-2.5 border-t border-[#1E293B]">
-                    <span>Especialista: <strong className="text-[#E0E7FF] capitalize">{decision.specialist}</strong></span>
+                    <span>Perfil: <strong className="text-[#E0E7FF] capitalize">{decision.specialist}</strong></span>
                     <span className="text-[10px] text-orange-400 font-mono">Plazo: {decision.deadline}</span>
                   </div>
                 </div>
@@ -315,63 +320,72 @@ export const DecisionesScreen: React.FC = () => {
               </div>
 
               {/* Action Buttons for Ramiro with Modal triggers */}
-              <div className="pt-3 border-t border-[#1E293B]">
-                <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider mb-3">
-                  Acciones Ejecutivas de Gobernanza (Ramiro):
-                </p>
+              <div className="pt-3 border-t border-[#1E293B] space-y-3">
+                <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px] text-[#94A3B8] flex items-start gap-2">
+                  <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Aviso de Gobernanza:</strong> Esta propuesta no se ejecuta desde NUGA Team Console. Requiere validación humana y aplicación mediante el procedimiento operativo autorizado.
+                  </span>
+                </div>
 
-                <div className="flex flex-wrap gap-2.5">
-                  {/* Primary Approve Button (opens reinforced confirmation modal) */}
-                  <button
-                    id="btn-approve-decision"
-                    onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'approve' })}
-                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Aprobar Decisión</span>
-                  </button>
+                <div>
+                  <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider mb-2.5">
+                    Acciones Ejecutivas de Gobernanza (Ramiro):
+                  </p>
 
-                  {/* Reject Button (opens reinforced confirmation modal) */}
-                  <button
-                    id="btn-reject-decision"
-                    onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'reject' })}
-                    className="px-4 py-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    <span>Rechazar</span>
-                  </button>
+                  <div className="flex flex-wrap gap-2.5">
+                    {/* Primary Approve Button (opens reinforced confirmation modal) */}
+                    <button
+                      id="btn-approve-decision"
+                      onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'approve' })}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Aprobar Decisión</span>
+                    </button>
 
-                  {/* Simulate / Dry-run */}
-                  <button
-                    id="btn-simulate-decision"
-                    onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'simulate' })}
-                    className="px-3.5 py-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <Play className="w-4 h-4" />
-                    <span>Simular Dry-run</span>
-                  </button>
+                    {/* Reject Button (opens reinforced confirmation modal) */}
+                    <button
+                      id="btn-reject-decision"
+                      onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'reject' })}
+                      className="px-4 py-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span>Rechazar</span>
+                    </button>
 
-                  {/* Request Info */}
-                  <button
-                    id="btn-request-info-decision"
-                    onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'info' })}
-                    className="px-3.5 py-2 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#94A3B8] hover:text-white border border-[#1E293B] font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <HelpCircle className="w-4 h-4" />
-                    <span>Pedir Información</span>
-                  </button>
+                    {/* Simulate / Dry-run */}
+                    <button
+                      id="btn-simulate-decision"
+                      onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'simulate' })}
+                      className="px-3.5 py-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>Simular Dry-run</span>
+                    </button>
 
-                  {/* Postpone */}
-                  <button
-                    id="btn-postpone-decision"
-                    onClick={() => {
-                      executeDecisionAction(activeDecision.id, 'postpone', 'Pospuesta para siguiente sesión ejecutiva.');
-                    }}
-                    className="px-3.5 py-2 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#64748B] hover:text-[#94A3B8] border border-[#1E293B] text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Posponer</span>
-                  </button>
+                    {/* Request Info */}
+                    <button
+                      id="btn-request-info-decision"
+                      onClick={() => openModal('decisionDetail', { decisionId: activeDecision.id, defaultTab: 'info' })}
+                      className="px-3.5 py-2 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#94A3B8] hover:text-white border border-[#1E293B] font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                      <span>Pedir Información</span>
+                    </button>
+
+                    {/* Postpone */}
+                    <button
+                      id="btn-postpone-decision"
+                      onClick={() => {
+                        executeDecisionAction(activeDecision.id, 'postpone', 'Pospuesta para siguiente sesión ejecutiva.');
+                      }}
+                      className="px-3.5 py-2 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#64748B] hover:text-[#94A3B8] border border-[#1E293B] text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Posponer</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

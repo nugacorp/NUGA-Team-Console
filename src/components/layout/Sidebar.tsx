@@ -17,9 +17,12 @@ import {
   ChevronRight,
   X,
   Sun,
-  Moon
+  Moon,
+  Database,
+  Terminal
 } from 'lucide-react';
 import { useApp, ScreenId } from '../../context/AppContext';
+import { APP_INFO } from '../../constants';
 
 interface NavItem {
   id: ScreenId;
@@ -46,8 +49,7 @@ export const Sidebar: React.FC = () => {
     toggleTheme,
     decisions,
     tasks,
-    incidents,
-    user
+    incidents
   } = useApp();
 
   const pendingDecisionsCount = decisions.filter(d => d.status === 'pending').length;
@@ -119,8 +121,10 @@ export const Sidebar: React.FC = () => {
           </div>
           {(!isSidebarCollapsed || isMobile) && (
             <div className="flex flex-col truncate">
-              <span className="font-bold text-sm text-[#E0E7FF] leading-tight">NUGA Team</span>
-              <span className="text-[10px] text-blue-400 font-mono tracking-wider">HERMES v2.4</span>
+              <span className="font-bold text-sm text-[#E0E7FF] leading-tight">{APP_INFO.name}</span>
+              <span className="text-[10px] text-blue-400 font-mono tracking-wider">
+                {APP_INFO.product} v{APP_INFO.version}
+              </span>
             </div>
           )}
         </div>
@@ -131,6 +135,7 @@ export const Sidebar: React.FC = () => {
             onClick={() => setIsMobileSidebarOpen(false)}
             className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors"
             title="Cerrar menú"
+            aria-label="Cerrar menú"
           >
             <X className="w-5 h-5" />
           </button>
@@ -203,43 +208,67 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      {/* Footer User Info Block */}
-      <div className="p-3.5 border-t border-[#1E293B] bg-[#0A141D] shrink-0">
+      {/* System Status Panel (Replaced duplicate Ramiro block) */}
+      <div className="p-3 border-t border-[#1E293B] bg-[#0A141D] shrink-0 text-xs">
         {(!isSidebarCollapsed || isMobile) ? (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-[#1E293B] border border-blue-500/30 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                ) : (
-                  'R'
-                )}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-[#E0E7FF] text-xs">
+                <Terminal className="w-3.5 h-3.5 text-blue-400" />
+                <span>NUGA Team Console</span>
               </div>
-              <div className="flex flex-col truncate">
-                <span className="text-xs font-bold text-[#E0E7FF] truncate">{user?.name || 'Ramiro'}</span>
-                <span className="text-[10px] text-green-500 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                  Propietario
-                </span>
+              <span className="text-[10px] font-mono text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                v{APP_INFO.version}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
+                <span className="truncate">Hermes: DEMO / no conectado</span>
               </div>
             </div>
 
-            {/* Quick theme toggle in footer */}
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors"
-              title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-blue-400" />
-              )}
-            </button>
+            <div className="flex items-center justify-between pt-1 border-t border-[#1E293B]/70 text-[11px] text-[#64748B]">
+              <div className="flex items-center gap-1">
+                <Database className="w-3 h-3 text-[#64748B]" />
+                <span>Almacenamiento: <strong className="text-[#94A3B8] font-normal">Local</strong></span>
+              </div>
+
+              {/* Theme indicator and toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-1 rounded text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1 cursor-pointer"
+                title={theme === 'dark' ? 'Tema Oscuro (Click para cambiar a Claro)' : 'Tema Claro (Click para cambiar a Oscuro)'}
+                aria-label={theme === 'dark' ? 'Tema Oscuro (Click para cambiar a Claro)' : 'Tema Claro (Click para cambiar a Oscuro)'}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-blue-400" />
+                )}
+                <span className="text-[10px] font-mono capitalize">{theme === 'dark' ? 'Oscuro' : 'Claro'}</span>
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="flex justify-center">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" title="Ramiro: Online" />
+          <div className="flex flex-col items-center gap-2 py-1">
+            <div className="relative group cursor-pointer" title={`NUGA Team Console v${APP_INFO.version}\nHermes: DEMO / no conectado\nAlmacenamiento: Local`}>
+              <Terminal className="w-4 h-4 text-blue-400" />
+              <span className="w-2 h-2 rounded-full bg-slate-500 absolute -top-0.5 -right-0.5 border border-[#0A141D]" />
+            </div>
+            <button
+              onClick={toggleTheme}
+              className="p-1 rounded text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+              aria-label={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-blue-400" />
+              )}
+            </button>
           </div>
         )}
       </div>

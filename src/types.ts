@@ -3,7 +3,7 @@ export type PriorityLevel = 'baja' | 'media' | 'alta' | 'urgente';
 
 export type AgentRole = 'director' | 'nugacore' | 'operaciones' | 'marketing' | 'administracion';
 
-export type HermesStatus = 'Desconectado' | 'Conectando' | 'Operativo' | 'Procesando' | 'Degradado' | 'Error';
+export type HermesStatus = 'No conectado' | 'Disponible' | 'Sincronizando' | 'Procesando tarea' | 'Atención requerida' | 'Error';
 
 export interface User {
   id: string;

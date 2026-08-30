@@ -112,13 +112,13 @@ export const ConversacionesScreen: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-sky-400" />
-              Canales de Agentes
+              Canales del Equipo (5)
             </h2>
             <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
               DEMO
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Orquestación y consultas directas</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Coordinación ejecutiva y consultas</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">

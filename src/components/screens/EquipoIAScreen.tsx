@@ -53,20 +53,20 @@ export const EquipoIAScreen: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-100">Organigrama del Equipo de Agentes IA</h2>
+                <h2 className="text-base font-bold text-slate-100">Organigrama de los 5 Perfiles del Equipo</h2>
                 <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
                   DEMO
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Estructura de orquestación, perfiles especializados, límites de autonomía y permisos de herramientas
+                Estructura de coordinación, perfiles del equipo, límites de autonomía y permisos en simulación local
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-              5 Especialistas Conectados
+              5 perfiles del equipo · DEMO
             </span>
           </div>
         </div>
@@ -102,7 +102,7 @@ export const EquipoIAScreen: React.FC = () => {
                         : 'bg-slate-800 text-slate-300 border border-slate-700'
                     }`}
                   >
-                    {isDirector ? 'ORQUESTADOR' : 'ESPECIALISTA'}
+                    {isDirector ? 'COORDINADOR' : 'PERFIL'}
                   </span>
                 </div>
 
@@ -114,7 +114,7 @@ export const EquipoIAScreen: React.FC = () => {
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400 font-mono">{agent.model ? agent.model.split('/')[0].trim() : 'Gemini'}</span>
+                <span className="text-slate-400 font-mono">{agent.model ? agent.model.split('/')[0].trim() : 'Gemini'} · DEMO</span>
                 <span
                   className={`w-2 h-2 rounded-full ${
                     agent.status === 'active'
