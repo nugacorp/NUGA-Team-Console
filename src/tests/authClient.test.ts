@@ -53,16 +53,16 @@ describe('Frontend owner session client', () => {
       headers: { 'Content-Type': 'application/json' }
     }));
 
-    await expect(new AuthClient('/api', 'staging').restore()).rejects.toMatchObject<AuthClientError>({
+    await expect(new AuthClient('/api', 'staging').restore()).rejects.toMatchObject({
       failure: 'invalid_response'
-    });
+    } satisfies Partial<AuthClientError>);
   });
 
   it('classifies a network failure as unavailable', async () => {
     vi.spyOn(window, 'fetch').mockRejectedValueOnce(new Error('offline'));
 
-    await expect(new AuthClient('/api', 'staging').restore()).rejects.toMatchObject<AuthClientError>({
+    await expect(new AuthClient('/api', 'staging').restore()).rejects.toMatchObject({
       failure: 'unavailable'
-    });
+    } satisfies Partial<AuthClientError>);
   });
 });
