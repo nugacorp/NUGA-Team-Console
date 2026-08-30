@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "server:dev": "tsx watch server/index.ts",
     "server:start": "tsx server/index.ts",
+    "auth:hash-password": "tsx server/hashPassword.ts",
     "clean": "rm -rf dist server.js",
     "lint": "eslint .",
     "test": "vitest run",

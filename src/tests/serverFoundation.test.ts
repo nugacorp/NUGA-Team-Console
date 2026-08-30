@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { AddressInfo } from 'node:net';
 import { createApp } from '../../server/app';
+import { createPasswordHash } from '../../server/auth';
 import {
   ServerConfigurationError,
   loadServerConfig,
@@ -8,6 +9,8 @@ import {
   ServerConfig
 } from '../../server/config';
 
+const TEST_PASSWORD = 'correct-horse-battery-staging';
+const TEST_HASH = createPasswordHash(TEST_PASSWORD, Buffer.alloc(16, 7));
 const activeServers: Array<ReturnType<ReturnType<typeof createApp>['listen']>> = [];
 
 function testConfig(): ServerConfig {
@@ -16,7 +19,9 @@ function testConfig(): ServerConfig {
     host: '127.0.0.1',
     port: 8787,
     publicOrigin: 'http://127.0.0.1:3000',
-    sessionSecret: 'test-only-secret-with-at-least-32-characters'
+    sessionSecret: 'test-only-secret-with-at-least-32-characters',
+    ownerUsername: 'ramiro',
+    ownerPasswordHash: TEST_HASH
   };
 }
 
@@ -33,6 +38,18 @@ async function startTestServer() {
   return `http://127.0.0.1:${address.port}`;
 }
 
+async function login(baseUrl: string, password = TEST_PASSWORD) {
+  return fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: 'http://127.0.0.1:3000',
+      'x-nuga-mode': 'staging'
+    },
+    body: JSON.stringify({ username: 'ramiro', password })
+  });
+}
+
 afterEach(async () => {
   await Promise.all(
     activeServers.splice(0).map(
@@ -45,7 +62,7 @@ afterEach(async () => {
 });
 
 describe('NUGA Console API staging foundation', () => {
-  it('requires an explicit server mode and a strong session secret', () => {
+  it('requires explicit mode, owner credentials and a strong session secret', () => {
     expect(() => parseServerMode(undefined)).toThrow(ServerConfigurationError);
     expect(() => parseServerMode('demo')).toThrow(ServerConfigurationError);
 
@@ -53,7 +70,9 @@ describe('NUGA Console API staging foundation', () => {
       loadServerConfig({
         NUGA_SERVER_MODE: 'staging',
         NUGA_PUBLIC_ORIGIN: 'http://127.0.0.1:3000',
-        NUGA_SESSION_SECRET: 'short'
+        NUGA_SESSION_SECRET: 'short',
+        NUGA_OWNER_USERNAME: 'ramiro',
+        NUGA_OWNER_PASSWORD_HASH: TEST_HASH
       })
     ).toThrow(ServerConfigurationError);
   });
@@ -90,15 +109,94 @@ describe('NUGA Console API staging foundation', () => {
     });
   });
 
-  it('reports Hermes resources as unavailable instead of fabricating data', async () => {
+  it('creates a signed HttpOnly owner session without returning a password', async () => {
     const baseUrl = await startTestServer();
-    const response = await fetch(`${baseUrl}/api/v1/tasks`, {
+    const response = await login(baseUrl);
+
+    expect(response.status).toBe(200);
+    const cookie = response.headers.get('set-cookie') ?? '';
+    expect(cookie).toContain('nuga_session=');
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('SameSite=Strict');
+
+    const body = await response.json() as Record<string, unknown>;
+    expect(body).toMatchObject({
+      user: { id: 'owner:ramiro', role: 'owner', name: 'Ramiro' }
+    });
+    expect(typeof body.csrfToken).toBe('string');
+    expect(JSON.stringify(body)).not.toContain(TEST_PASSWORD);
+    expect(JSON.stringify(body)).not.toContain(TEST_HASH);
+  });
+
+  it('rejects an invalid password without creating a cookie', async () => {
+    const baseUrl = await startTestServer();
+    const response = await login(baseUrl, 'incorrect-password');
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('protects owner and Hermes resources behind the signed session', async () => {
+    const baseUrl = await startTestServer();
+
+    const anonymous = await fetch(`${baseUrl}/api/v1/tasks`, {
       headers: { 'x-nuga-mode': 'staging' }
     });
+    expect(anonymous.status).toBe(401);
 
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({
+    const loginResponse = await login(baseUrl);
+    const cookie = loginResponse.headers.get('set-cookie') ?? '';
+
+    const me = await fetch(`${baseUrl}/api/v1/auth/me`, {
+      headers: {
+        cookie,
+        'x-nuga-mode': 'staging'
+      }
+    });
+    expect(me.status).toBe(200);
+    expect(await me.json()).toMatchObject({
+      id: 'owner:ramiro',
+      role: 'owner'
+    });
+
+    const tasks = await fetch(`${baseUrl}/api/v1/tasks`, {
+      headers: {
+        cookie,
+        'x-nuga-mode': 'staging'
+      }
+    });
+    expect(tasks.status).toBe(503);
+    expect(await tasks.json()).toMatchObject({
       error: { code: 'HERMES_NOT_CONNECTED' }
     });
+  });
+
+  it('requires the session CSRF token to log out', async () => {
+    const baseUrl = await startTestServer();
+    const loginResponse = await login(baseUrl);
+    const cookie = loginResponse.headers.get('set-cookie') ?? '';
+    const loginBody = await loginResponse.json() as { csrfToken: string };
+
+    const denied = await fetch(`${baseUrl}/api/v1/auth/logout`, {
+      method: 'POST',
+      headers: {
+        cookie,
+        origin: 'http://127.0.0.1:3000',
+        'x-nuga-mode': 'staging'
+      }
+    });
+    expect(denied.status).toBe(403);
+
+    const accepted = await fetch(`${baseUrl}/api/v1/auth/logout`, {
+      method: 'POST',
+      headers: {
+        cookie,
+        origin: 'http://127.0.0.1:3000',
+        'x-csrf-token': loginBody.csrfToken,
+        'x-nuga-mode': 'staging'
+      }
+    });
+    expect(accepted.status).toBe(204);
+    expect(accepted.headers.get('set-cookie')).toContain('Max-Age=0');
   });
 });

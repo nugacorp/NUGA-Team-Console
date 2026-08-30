@@ -4,6 +4,15 @@ import express, {
   Response
 } from 'express';
 import { randomUUID } from 'node:crypto';
+import {
+  AuthSession,
+  createSessionToken,
+  parseCookie,
+  serializeExpiredSessionCookie,
+  serializeSessionCookie,
+  verifyPassword,
+  verifySessionToken
+} from './auth';
 import { ServerConfig } from './config';
 import {
   apiError,
@@ -16,8 +25,13 @@ import {
 
 const API_PREFIX = '/api/v1';
 
+function getSession(response: Response): AuthSession | null {
+  return (response.locals as { authSession?: AuthSession }).authSession ?? null;
+}
+
 export function createApp(config: ServerConfig) {
   const app = express();
+  const secureCookies = config.publicOrigin.startsWith('https://');
 
   app.disable('x-powered-by');
   app.use(express.json({ limit: '256kb', strict: true }));
@@ -67,11 +81,111 @@ export function createApp(config: ServerConfig) {
     response.status(200).json(createServerCapabilities(config.mode));
   });
 
-  app.get(`${API_PREFIX}/auth/me`, (_request, response) => {
-    response.status(401).json(
-      apiError('UNAUTHORIZED', 'No existe una sesión autenticada.')
+  app.post(`${API_PREFIX}/auth/login`, (request, response) => {
+    const body = request.body as Record<string, unknown>;
+    const username = typeof body.username === 'string' ? body.username.trim() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+
+    if (
+      username !== config.ownerUsername ||
+      !verifyPassword(password, config.ownerPasswordHash)
+    ) {
+      response.status(401).json(
+        apiError('UNAUTHORIZED', 'Usuario o contraseña inválidos.')
+      );
+      return;
+    }
+
+    const { token, session } = createSessionToken(
+      config.ownerUsername,
+      config.sessionSecret
     );
+
+    response.setHeader(
+      'set-cookie',
+      serializeSessionCookie(token, secureCookies)
+    );
+    response.status(200).json({
+      user: {
+        id: `owner:${config.ownerUsername}`,
+        name: 'Ramiro',
+        email: '',
+        role: 'owner',
+        title: 'Propietario',
+        avatar: ''
+      },
+      csrfToken: session.csrfToken,
+      expiresAt: new Date(session.expiresAt * 1000).toISOString()
+    });
   });
+
+  const requireSession = (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) => {
+    const token = parseCookie(request.header('cookie'), 'nuga_session');
+    const session = token
+      ? verifySessionToken(token, config.sessionSecret)
+      : null;
+
+    if (!session || session.subject !== config.ownerUsername) {
+      response.status(401).json(
+        apiError('UNAUTHORIZED', 'No existe una sesión válida.')
+      );
+      return;
+    }
+
+    (response.locals as { authSession?: AuthSession }).authSession = session;
+    next();
+  };
+
+  const requireCsrf = (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) => {
+    const session = getSession(response);
+    if (
+      !session ||
+      request.header('x-csrf-token') !== session.csrfToken
+    ) {
+      response.status(403).json(
+        apiError('CSRF_DENIED', 'La validación CSRF falló.')
+      );
+      return;
+    }
+    next();
+  };
+
+  app.get(`${API_PREFIX}/auth/me`, requireSession, (_request, response) => {
+    const session = getSession(response);
+    response.status(200).json({
+      id: `owner:${config.ownerUsername}`,
+      name: 'Ramiro',
+      email: '',
+      role: 'owner',
+      title: 'Propietario',
+      avatar: '',
+      csrfToken: session?.csrfToken,
+      sessionExpiresAt: session
+        ? new Date(session.expiresAt * 1000).toISOString()
+        : undefined
+    });
+  });
+
+  app.post(
+    `${API_PREFIX}/auth/logout`,
+    requireSession,
+    requireCsrf,
+    (_request, response) => {
+      response.setHeader(
+        'set-cookie',
+        serializeExpiredSessionCookie(secureCookies)
+      );
+      response.status(204).end();
+    }
+  );
 
   const hermesUnavailable = (_request: Request, response: Response) => {
     response.status(503).json(
@@ -82,12 +196,12 @@ export function createApp(config: ServerConfig) {
     );
   };
 
-  app.get(`${API_PREFIX}/agents`, hermesUnavailable);
-  app.get(`${API_PREFIX}/tasks`, hermesUnavailable);
-  app.get(`${API_PREFIX}/tasks/:id`, hermesUnavailable);
-  app.get(`${API_PREFIX}/tasks/:id/runs`, hermesUnavailable);
-  app.get(`${API_PREFIX}/deliverables`, hermesUnavailable);
-  app.get(`${API_PREFIX}/audit/events`, hermesUnavailable);
+  app.get(`${API_PREFIX}/agents`, requireSession, hermesUnavailable);
+  app.get(`${API_PREFIX}/tasks`, requireSession, hermesUnavailable);
+  app.get(`${API_PREFIX}/tasks/:id`, requireSession, hermesUnavailable);
+  app.get(`${API_PREFIX}/tasks/:id/runs`, requireSession, hermesUnavailable);
+  app.get(`${API_PREFIX}/deliverables`, requireSession, hermesUnavailable);
+  app.get(`${API_PREFIX}/audit/events`, requireSession, hermesUnavailable);
 
   app.use(API_PREFIX, (_request, response) => {
     response.status(404).json(
