@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck, tests, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Reject tracked environment files
+        shell: bash
+        run: |
+          tracked_env_files="$(
+            git ls-files |
+            grep -E '(^|/)\.env($|\.)' |
+            grep -v -E '(^|/)\.env\.example$' || true
+          )"
+
+          if [ -n "$tracked_env_files" ]; then
+            echo "Tracked environment files are not allowed:"
+            echo "$tracked_env_files"
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Tests
+        run: bun run test
+
+      - name: Lint with warning budget
+        run: bun run lint -- --max-warnings=133
+
+      - name: Production build
+        env:
+          VITE_APP_MODE: demo
+          VITE_NUGA_API_URL: /api
+        run: bun run build
