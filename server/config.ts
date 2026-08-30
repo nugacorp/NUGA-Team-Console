@@ -45,7 +45,11 @@ function parseOrigin(value: string | undefined): string {
     throw new ServerConfigurationError('NUGA_PUBLIC_ORIGIN debe ser una URL absoluta válida.');
   }
 
-  if (url.protocol !== 'https:' && url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+  if (
+    url.protocol !== 'https:' &&
+    url.hostname !== '127.0.0.1' &&
+    url.hostname !== 'localhost'
+  ) {
     throw new ServerConfigurationError(
       'NUGA_PUBLIC_ORIGIN debe usar HTTPS fuera del desarrollo local.'
     );
@@ -70,16 +74,7 @@ export function loadServerConfig(
   if (!ownerUsername) {
     throw new ServerConfigurationError('NUGA_OWNER_USERNAME es obligatorio.');
   }
-  if (!ownerPasswordHash.startsWith('scrypt-v1
-    host: environment.NUGA_SERVER_HOST || '127.0.0.1',
-    port: parsePort(environment.NUGA_SERVER_PORT),
-    publicOrigin: parseOrigin(environment.NUGA_PUBLIC_ORIGIN),
-    sessionSecret,
-    ownerUsername,
-    ownerPasswordHash
-  };
-}
-)) {
+  if (!ownerPasswordHash.startsWith('scrypt-v1\$')) {
     throw new ServerConfigurationError(
       'NUGA_OWNER_PASSWORD_HASH debe contener un hash scrypt-v1 válido.'
     );
@@ -90,6 +85,8 @@ export function loadServerConfig(
     host: environment.NUGA_SERVER_HOST || '127.0.0.1',
     port: parsePort(environment.NUGA_SERVER_PORT),
     publicOrigin: parseOrigin(environment.NUGA_PUBLIC_ORIGIN),
-    sessionSecret
+    sessionSecret,
+    ownerUsername,
+    ownerPasswordHash
   };
 }
