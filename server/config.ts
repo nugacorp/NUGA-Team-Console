@@ -74,7 +74,7 @@ export function loadServerConfig(
   if (!ownerUsername) {
     throw new ServerConfigurationError('NUGA_OWNER_USERNAME es obligatorio.');
   }
-  if (!ownerPasswordHash.startsWith('scrypt-v1\$')) {
+  if (!ownerPasswordHash.startsWith("scrypt-v1$")) {
     throw new ServerConfigurationError(
       'NUGA_OWNER_PASSWORD_HASH debe contener un hash scrypt-v1 válido.'
     );
