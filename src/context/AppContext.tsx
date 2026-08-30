@@ -17,9 +17,17 @@ import {
   AppNotification,
   AppSettings,
   User,
-  AgentRole
+  AgentRole,
+  AppMode,
+  AppConfig,
+  ServerStatusContract,
+  BackendCapabilities
 } from '../types';
 import { storageService } from '../services/storageService';
+import { getAppConfig, validateModeCompatibility } from '../config/appConfig';
+import { createProviders, AppProviders } from '../providers';
+import { checkServerHealth } from '../services/healthCheckService';
+import { IncompatibleConfigScreen } from '../components/layout/IncompatibleConfigScreen';
 
 export type ScreenId =
   | 'resumen'
@@ -55,7 +63,7 @@ const VALID_SCREENS: ScreenId[] = [
 const normalizeScreenFromUrl = (): ScreenId => {
   try {
     if (typeof window === 'undefined') return 'resumen';
-    
+
     // Check hash first: #/tareas, #tareas, #/operaciones-wisp, etc.
     const rawHash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
     if (rawHash) {
@@ -64,7 +72,7 @@ const normalizeScreenFromUrl = (): ScreenId => {
         return rawHash as ScreenId;
       }
     }
-    
+
     // Check path: /tareas, /operaciones-wisp, etc.
     const rawPath = window.location.pathname.replace(/^\//, '').trim().toLowerCase();
     if (rawPath) {
@@ -100,6 +108,18 @@ interface AppContextType {
   setIsMobileSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   isNotificationCenterOpen: boolean;
   setIsNotificationCenterOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+
+  // Environment & Mode Architecture
+  appMode: AppMode;
+  appConfig: AppConfig;
+  providers: AppProviders;
+  serverStatus: ServerStatusContract | null;
+  capabilities: BackendCapabilities;
+  isCompatible: boolean;
+  incompatibilityReason?: string;
+  demoDataset: string;
+  setDemoDataset: (datasetId: string) => void;
+  refreshData: () => Promise<void>;
 
   // Data
   agents: AgentProfile[];
@@ -178,6 +198,24 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // App Configuration and Mode resolution
+  const [appConfig] = useState<AppConfig>(() => getAppConfig());
+  const [appMode] = useState<AppMode>(() => appConfig.mode);
+  const [providers] = useState<AppProviders>(() => createProviders(appConfig.mode, appConfig));
+
+  const [serverStatus, setServerStatus] = useState<ServerStatusContract | null>(() => ({
+    mode: appConfig.mode,
+    source: appConfig.mode === 'demo' ? 'client' : 'server',
+    hermes: 'not_connected',
+    writesEnabled: appConfig.mode === 'production',
+    integrations: { nugacore: false, mikromcp: false, google: false }
+  }));
+
+  const [capabilities, setCapabilities] = useState<BackendCapabilities>(() => appConfig.capabilities);
+  const [isCompatible, setIsCompatible] = useState<boolean>(true);
+  const [incompatibilityReason, setIncompatibilityReason] = useState<string | undefined>(undefined);
+  const [demoDataset, setDemoDataset] = useState<string>('standard');
+
   const [currentScreen, setCurrentScreenState] = useState<ScreenId>(() => normalizeScreenFromUrl());
   const [user, setUser] = useState<User>(() => storageService.getUser());
   const [settings, setSettings] = useState<AppSettings>(() => storageService.getSettings());
@@ -186,22 +224,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState<boolean>(false);
 
-  // Entities
-  const [agents, setAgents] = useState<AgentProfile[]>(() => storageService.getAgents());
-  const [projects, setProjects] = useState<Project[]>(() => storageService.getProjects());
-  const [tasks, setTasks] = useState<Task[]>(() => storageService.getTasks());
-  const [decisions, setDecisions] = useState<Decision[]>(() => storageService.getDecisions());
-  const [towers, setTowers] = useState<WispTower[]>(() => storageService.getTowers());
-  const [routers, setRouters] = useState<MikroTikRouter[]>(() => storageService.getRouters());
-  const [links, setLinks] = useState<WispLink[]>(() => storageService.getLinks());
-  const [incidents, setIncidents] = useState<WispIncident[]>(() => storageService.getIncidents());
-  const [campaigns, setCampaigns] = useState<Campaign[]>(() => storageService.getCampaigns());
-  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>(() => storageService.getMediaAssets());
-  const [deliverables, setDeliverables] = useState<Deliverable[]>(() => storageService.getDeliverables());
-  const [adminItems, setAdminItems] = useState<AdminItem[]>(() => storageService.getAdminItems());
-  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(() => storageService.getAuditEvents());
-  const [conversations, setConversations] = useState<Conversation[]>(() => storageService.getConversations());
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => storageService.getNotifications());
+  // Entities initialized from storage (in demo) or empty (in staging/production until loaded)
+  const [agents, setAgents] = useState<AgentProfile[]>(() => (appConfig.isDemo ? storageService.getAgents() : []));
+  const [projects, setProjects] = useState<Project[]>(() => (appConfig.isDemo ? storageService.getProjects() : []));
+  const [tasks, setTasks] = useState<Task[]>(() => (appConfig.isDemo ? storageService.getTasks() : []));
+  const [decisions, setDecisions] = useState<Decision[]>(() => (appConfig.isDemo ? storageService.getDecisions() : []));
+  const [towers, setTowers] = useState<WispTower[]>(() => (appConfig.isDemo ? storageService.getTowers() : []));
+  const [routers, setRouters] = useState<MikroTikRouter[]>(() => (appConfig.isDemo ? storageService.getRouters() : []));
+  const [links, setLinks] = useState<WispLink[]>(() => (appConfig.isDemo ? storageService.getLinks() : []));
+  const [incidents, setIncidents] = useState<WispIncident[]>(() => (appConfig.isDemo ? storageService.getIncidents() : []));
+  const [campaigns, setCampaigns] = useState<Campaign[]>(() => (appConfig.isDemo ? storageService.getCampaigns() : []));
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>(() => (appConfig.isDemo ? storageService.getMediaAssets() : []));
+  const [deliverables, setDeliverables] = useState<Deliverable[]>(() => (appConfig.isDemo ? storageService.getDeliverables() : []));
+  const [adminItems, setAdminItems] = useState<AdminItem[]>(() => (appConfig.isDemo ? storageService.getAdminItems() : []));
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(() => (appConfig.isDemo ? storageService.getAuditEvents() : []));
+  const [conversations, setConversations] = useState<Conversation[]>(() => (appConfig.isDemo ? storageService.getConversations() : []));
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => (appConfig.isDemo ? storageService.getNotifications() : []));
 
   // Selections
   const [selectedAgentId, setSelectedAgentId] = useState<AgentRole | undefined>(undefined);
@@ -259,6 +297,100 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, []);
 
+  // Health check and mode verification
+  const verifyHealth = useCallback(async () => {
+    const health = await checkServerHealth(appMode, appConfig.apiUrl);
+    setServerStatus(health.serverContract);
+    setCapabilities(health.capabilities);
+
+    const compatibility = validateModeCompatibility(appMode, health.serverContract);
+    if (!compatibility.compatible) {
+      setIsCompatible(false);
+      setIncompatibilityReason(compatibility.reason);
+    } else {
+      setIsCompatible(true);
+      setIncompatibilityReason(undefined);
+    }
+  }, [appMode, appConfig.apiUrl]);
+
+  useEffect(() => {
+    verifyHealth();
+  }, [verifyHealth]);
+
+  // Refresh data from active providers
+  const refreshData = useCallback(async () => {
+    if (!isCompatible) return;
+
+    try {
+      const [
+        agentsRes,
+        projectsRes,
+        tasksRes,
+        decisionsRes,
+        towersRes,
+        routersRes,
+        linksRes,
+        incidentsRes,
+        campaignsRes,
+        mediaRes,
+        deliverablesRes,
+        adminRes,
+        auditRes,
+        convsRes,
+        notifsRes,
+        settingsRes,
+        userRes
+      ] = await Promise.all([
+        providers.agents.getAgents(),
+        providers.projects.getProjects(),
+        providers.tasks.getTasks(),
+        providers.decisions.getDecisions(),
+        providers.wisp.getTowers(),
+        providers.wisp.getRouters(),
+        providers.wisp.getLinks(),
+        providers.wisp.getIncidents(),
+        providers.marketing.getCampaigns(),
+        providers.marketing.getMediaAssets(),
+        providers.deliverables.getDeliverables(),
+        providers.administration.getAdminItems(),
+        providers.audit.getAuditEvents(),
+        providers.conversations.getConversations(),
+        providers.configuration.getNotifications(),
+        providers.configuration.getSettings(),
+        providers.configuration.getUser()
+      ]);
+
+      if (agentsRes.data) setAgents(agentsRes.data);
+      if (projectsRes.data) setProjects(projectsRes.data);
+      if (tasksRes.data) setTasks(tasksRes.data);
+      if (decisionsRes.data) setDecisions(decisionsRes.data);
+      if (towersRes.data) setTowers(towersRes.data);
+      if (routersRes.data) setRouters(routersRes.data);
+      if (linksRes.data) setLinks(linksRes.data);
+      if (incidentsRes.data) setIncidents(incidentsRes.data);
+      if (campaignsRes.data) setCampaigns(campaignsRes.data);
+      if (mediaRes.data) setMediaAssets(mediaRes.data);
+      if (deliverablesRes.data) setDeliverables(deliverablesRes.data);
+      if (adminRes.data) setAdminItems(adminRes.data);
+      if (auditRes.data) setAuditEvents(auditRes.data);
+      if (convsRes.data) setConversations(convsRes.data);
+      if (notifsRes.data) setNotifications(notifsRes.data);
+      if (settingsRes.data) {
+        setSettings(settingsRes.data);
+        setTheme(settingsRes.data.theme);
+      }
+      if (userRes.data) setUser(userRes.data);
+    } catch {
+      // In staging/production when disconnected, state remains empty rather than fake fixtures
+    }
+  }, [providers, isCompatible]);
+
+  useEffect(() => {
+    if (appMode !== 'demo') {
+      refreshData();
+    }
+  }, [refreshData, appMode]);
+
   // Listen for hash/url changes for direct reload and back/forward navigation
   useEffect(() => {
     const handleUrlChange = () => {
@@ -295,73 +427,109 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const toggleTheme = useCallback(() => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
-    const updated = storageService.updateSettings({ theme: next });
-    setSettings(updated);
+    providers.configuration.updateSettings({ theme: next });
+    setSettings(prev => ({ ...prev, theme: next }));
     addToast({
       type: 'info',
       title: 'Preferencia de Tema',
       message: `Tema cambiado a modo ${next === 'dark' ? 'Oscuro' : 'Claro'}.`
     });
-  }, [theme, addToast]);
+  }, [theme, addToast, providers]);
 
-  const updateSettings = useCallback((partial: Partial<AppSettings>) => {
-    const updated = storageService.updateSettings(partial);
-    setSettings(updated);
-    if (partial.theme) setTheme(partial.theme);
-    setAuditEvents(storageService.getAuditEvents());
+  const updateSettings = useCallback(async (partial: Partial<AppSettings>) => {
+    const res = await providers.configuration.updateSettings(partial);
+    if (res.data) {
+      setSettings(res.data);
+      if (partial.theme) setTheme(partial.theme);
+    }
+    const auditRes = await providers.audit.getAuditEvents();
+    if (auditRes.data) setAuditEvents(auditRes.data);
     addToast({
       type: 'success',
       title: 'Configuración Guardada',
-      message: 'Los parámetros han sido actualizados en almacenamiento local DEMO.'
+      message: appMode === 'demo' ? 'Los parámetros han sido actualizados en almacenamiento local DEMO.' : 'Configuración guardada en el servidor.'
     });
-  }, [addToast]);
+  }, [addToast, providers, appMode]);
 
-  const updateAgent = useCallback((agentId: string, partial: Partial<AgentProfile>) => {
-    const updated = storageService.updateAgent(agentId, partial);
-    setAgents(updated);
-    setAuditEvents(storageService.getAuditEvents());
+  const updateAgent = useCallback(async (agentId: string, partial: Partial<AgentProfile>) => {
+    const res = await providers.agents.updateAgent(agentId, partial);
+    if (res.data) {
+      setAgents(prev => prev.map(a => (a.id === agentId ? res.data! : a)));
+    }
+    const auditRes = await providers.audit.getAuditEvents();
+    if (auditRes.data) setAuditEvents(auditRes.data);
     addToast({
       type: 'success',
       title: 'Agente Actualizado',
       message: `Configuración de autonomía y herramientas para ${agentId} guardada.`
     });
-  }, [addToast]);
+  }, [addToast, providers]);
 
-  const createTask = useCallback((taskData: any) => {
-    const newTask = storageService.createTask(taskData);
-    setTasks(storageService.getTasks());
-    setAuditEvents(storageService.getAuditEvents());
-    addToast({
-      type: 'success',
-      title: 'Tarea Creada',
-      message: `La tarea ${newTask.code} se agregó al tablero Kanban.`
+  const createTask = useCallback(async (taskData: any) => {
+    const res = await providers.tasks.createTask(taskData);
+    if (res.data) {
+      setTasks(prev => [res.data!, ...prev]);
+      addToast({
+        type: 'success',
+        title: 'Tarea Creada',
+        message: `La tarea ${res.data.code} se agregó al tablero Kanban.`
+      });
+    } else if (res.error) {
+      addToast({
+        type: 'error',
+        title: 'Error al Crear Tarea',
+        message: res.error
+      });
+    }
+    const auditRes = await providers.audit.getAuditEvents();
+    if (auditRes.data) setAuditEvents(auditRes.data);
+  }, [addToast, providers]);
+
+  const updateTask = useCallback(async (id: string, partial: Partial<Task>) => {
+    const res = await providers.tasks.updateTask(id, partial);
+    if (res.data) {
+      setTasks(prev => prev.map(t => (t.id === id ? res.data! : t)));
+    }
+  }, [providers]);
+
+  const addTaskComment = useCallback(async (taskId: string, commentText: string) => {
+    const res = await providers.tasks.addTaskComment(taskId, {
+      authorRole: user.role === 'admin' ? 'ramiro' : 'director',
+      authorName: user.name,
+      content: commentText
     });
-  }, [addToast]);
+    if (res.data) {
+      setTasks(prev =>
+        prev.map(t => {
+          if (t.id === taskId) {
+            return {
+              ...t,
+              comments: [...(t.comments || []), res.data!]
+            };
+          }
+          return t;
+        })
+      );
+      addToast({
+        type: 'success',
+        title: 'Comentario Registrado',
+        message: 'Tu nota ha sido agregada al historial de la tarea.'
+      });
+    }
+  }, [addToast, providers, user]);
 
-  const updateTask = useCallback((id: string, partial: Partial<Task>) => {
-    const updated = storageService.updateTask(id, partial);
-    setTasks(updated);
-  }, []);
-
-  const addTaskComment = useCallback((taskId: string, commentText: string) => {
-    const updated = storageService.addTaskComment(taskId, commentText);
-    setTasks(updated);
-    addToast({
-      type: 'success',
-      title: 'Comentario Registrado',
-      message: 'Tu nota ha sido agregada al historial de la tarea.'
-    });
-  }, [addToast]);
-
-  const executeDecisionAction = useCallback((
+  const executeDecisionAction = useCallback(async (
     id: string,
     action: 'approve' | 'reject' | 'needs_info' | 'postpone' | 'simulate' | 'adjust_scope',
     comment?: string,
     confirmationText?: string
   ) => {
-    const { decisions: updated, updatedDecision } = storageService.executeDecisionAction(id, action, comment, confirmationText);
-    setDecisions(updated);
-    setAuditEvents(storageService.getAuditEvents());
+    const res = await providers.decisions.executeDecisionAction(id, action, comment, confirmationText);
+    if (res.data) {
+      setDecisions(prev => prev.map(d => (d.id === id ? res.data! : d)));
+    }
+    const auditRes = await providers.audit.getAuditEvents();
+    if (auditRes.data) setAuditEvents(auditRes.data);
 
     const actionText =
       action === 'approve'
@@ -376,102 +544,135 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     addToast({
       type: action === 'approve' ? 'success' : action === 'reject' ? 'warning' : 'info',
-      title: `Decisión ${updatedDecision?.code || ''}`,
+      title: `Decisión ${res.data?.code || id}`,
       message: `Acción ejecutada: ${actionText}. Registro guardado en auditoría.`
     });
-  }, [addToast]);
+  }, [addToast, providers]);
 
-  const createIncident = useCallback((incidentData: any) => {
-    const newInc = storageService.createIncident(incidentData);
-    setIncidents(storageService.getIncidents());
-    setAuditEvents(storageService.getAuditEvents());
-    addToast({
-      type: 'warning',
-      title: 'Incidente Registrado',
-      message: `Ticket ${newInc.code} abierto para ${newInc.assignedSpecialist}.`
-    });
-  }, [addToast]);
+  const createIncident = useCallback(async (incidentData: any) => {
+    const res = await providers.wisp.createIncident(incidentData);
+    if (res.data) {
+      setIncidents(prev => [res.data!, ...prev]);
+      addToast({
+        type: 'warning',
+        title: 'Incidente Registrado',
+        message: `Ticket ${res.data.code} abierto para ${res.data.assignedSpecialist}.`
+      });
+    }
+    const auditRes = await providers.audit.getAuditEvents();
+    if (auditRes.data) setAuditEvents(auditRes.data);
+  }, [addToast, providers]);
 
-  const createCampaign = useCallback((campaignData: any) => {
-    const newCamp = storageService.createCampaign(campaignData);
-    setCampaigns(storageService.getCampaigns());
-    addToast({
-      type: 'success',
-      title: 'Campaña Creada',
-      message: `Campaña ${newCamp.code} agregada en fase de Brief creativo.`
-    });
-  }, [addToast]);
+  const createCampaign = useCallback(async (campaignData: any) => {
+    const res = await providers.marketing.createCampaign(campaignData);
+    if (res.data) {
+      setCampaigns(prev => [res.data!, ...prev]);
+      addToast({
+        type: 'success',
+        title: 'Campaña Creada',
+        message: `Campaña ${res.data.code} agregada en fase de Brief creativo.`
+      });
+    }
+  }, [addToast, providers]);
 
-  const createAdminItem = useCallback((itemData: any) => {
-    const newItem = storageService.createAdminItem(itemData);
-    setAdminItems(storageService.getAdminItems());
-    addToast({
-      type: 'success',
-      title: 'Registro Administrativo Creado',
-      message: `"${newItem.title}" guardado en seguimiento.`
-    });
-  }, [addToast]);
+  const createAdminItem = useCallback(async (itemData: any) => {
+    const res = await providers.administration.createAdminItem(itemData);
+    if (res.data) {
+      setAdminItems(prev => [res.data!, ...prev]);
+      addToast({
+        type: 'success',
+        title: 'Registro Administrativo Creado',
+        message: `"${res.data.title}" guardado en seguimiento.`
+      });
+    }
+  }, [addToast, providers]);
 
-  const updateDeliverableStatus = useCallback((id: string, status: Deliverable['status']) => {
-    const updated = storageService.updateDeliverableStatus(id, status);
-    setDeliverables(updated);
-    addToast({
-      type: status === 'approved' ? 'success' : 'info',
-      title: status === 'approved' ? 'Entregable Aprobado' : 'Estado Actualizado',
-      message: status === 'approved'
-        ? 'El entregable fue validado formalmente por Ramiro y archivado como definitivo.'
-        : 'Se notificó al agente para realizar los ajustes solicitados.'
-    });
-  }, [addToast]);
+  const updateDeliverableStatus = useCallback(async (id: string, status: Deliverable['status']) => {
+    const res = await providers.deliverables.updateDeliverableStatus(id, status);
+    if (res.data) {
+      setDeliverables(prev => prev.map(d => (d.id === id ? res.data! : d)));
+      addToast({
+        type: status === 'approved' ? 'success' : 'info',
+        title: status === 'approved' ? 'Entregable Aprobado' : 'Estado Actualizado',
+        message:
+          status === 'approved'
+            ? 'El entregable fue validado formalmente por Ramiro y archivado como definitivo.'
+            : 'Se notificó al agente para realizar los ajustes solicitados.'
+      });
+    }
+  }, [addToast, providers]);
 
   const createNotification = useCallback((notifData: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
-    const newNotif = storageService.createNotification(notifData);
-    setNotifications(storageService.getNotifications());
-    addToast({
-      type: notifData.priority === 'urgente' ? 'error' : notifData.priority === 'alta' ? 'warning' : 'info',
-      title: 'Nueva Notificación',
-      message: notifData.title
-    });
-    return newNotif;
-  }, [addToast]);
+    if (appMode === 'demo') {
+      const newNotif = storageService.createNotification(notifData);
+      setNotifications(storageService.getNotifications());
+      addToast({
+        type: notifData.priority === 'urgente' ? 'error' : notifData.priority === 'alta' ? 'warning' : 'info',
+        title: 'Nueva Notificación',
+        message: notifData.title
+      });
+      return newNotif;
+    }
+  }, [addToast, appMode]);
 
-  const deleteNotification = useCallback((id: string) => {
-    const updated = storageService.deleteNotification(id);
-    setNotifications(updated);
-  }, []);
+  const deleteNotification = useCallback(async (id: string) => {
+    if (appMode === 'demo') {
+      const updated = storageService.deleteNotification(id);
+      setNotifications(updated);
+    } else {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }
+  }, [appMode]);
 
-  const clearAllNotifications = useCallback(() => {
-    const updated = storageService.clearAllNotifications();
-    setNotifications(updated);
+  const clearAllNotifications = useCallback(async () => {
+    await providers.configuration.clearNotifications();
+    setNotifications([]);
     addToast({
       type: 'info',
       title: 'Notificaciones Limpiadas',
       message: 'Se han eliminado todas las notificaciones.'
     });
-  }, [addToast]);
+  }, [addToast, providers]);
 
   const toggleNotificationRead = useCallback((id: string) => {
-    const updated = storageService.toggleNotificationRead(id);
-    setNotifications(updated);
-  }, []);
+    if (appMode === 'demo') {
+      const updated = storageService.toggleNotificationRead(id);
+      setNotifications(updated);
+    } else {
+      setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: !n.read } : n)));
+    }
+  }, [appMode]);
 
-  const markNotificationRead = useCallback((id: string) => {
-    const updated = storageService.markNotificationAsRead(id);
-    setNotifications(updated);
-  }, []);
+  const markNotificationRead = useCallback(async (id: string) => {
+    await providers.configuration.markNotificationRead(id);
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
+  }, [providers]);
 
   const markAllNotificationsRead = useCallback(() => {
-    const updated = storageService.markAllNotificationsRead();
-    setNotifications(updated);
+    if (appMode === 'demo') {
+      const updated = storageService.markAllNotificationsRead();
+      setNotifications(updated);
+    } else {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    }
     addToast({
       type: 'info',
       title: 'Notificaciones',
       message: 'Todas las alertas marcadas como leídas.'
     });
-  }, [addToast]);
+  }, [addToast, appMode]);
 
-  const resetAllDemoData = useCallback(() => {
-    storageService.resetAllToDefault();
+  const resetAllDemoData = useCallback(async () => {
+    if (appMode !== 'demo') {
+      addToast({
+        type: 'error',
+        title: 'Operación no permitida',
+        message: 'El restablecimiento de datos DEMO no está permitido en este entorno.'
+      });
+      return;
+    }
+
+    await providers.configuration.resetDemoData();
     setUser(storageService.getUser());
     setSettings(storageService.getSettings());
     setTheme(storageService.getSettings().theme);
@@ -496,7 +697,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       title: 'Datos DEMO Restablecidos',
       message: 'Se ha restaurado la base de datos simulada inicial.'
     });
-  }, [addToast]);
+  }, [addToast, appMode, providers]);
+
+  // If environment configuration is incompatible, block unsafe operations
+  if (!isCompatible) {
+    return (
+      <IncompatibleConfigScreen
+        reason={incompatibilityReason || 'Incompatibilidad de entorno detectada.'}
+        frontendMode={appMode}
+        serverMode={serverStatus?.mode}
+        onRetry={verifyHealth}
+      />
+    );
+  }
 
   return (
     <AppContext.Provider
@@ -514,6 +727,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsMobileSidebarOpen,
         isNotificationCenterOpen,
         setIsNotificationCenterOpen,
+        appMode,
+        appConfig,
+        providers,
+        serverStatus,
+        capabilities,
+        isCompatible,
+        incompatibilityReason,
+        demoDataset,
+        setDemoDataset,
+        refreshData,
         agents,
         projects,
         tasks,

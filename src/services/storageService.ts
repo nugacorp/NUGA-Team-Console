@@ -646,6 +646,14 @@ export class StorageService {
       console.warn('Error clearing localStorage:', err);
     }
   }
+
+  resetToInitial(): void {
+    this.resetAllToDefault();
+  }
+
+  resetAllToInitial(): void {
+    this.resetAllToDefault();
+  }
 }
 
 export const storageService = new StorageService();

@@ -6,22 +6,13 @@ import { AppProvider, useApp } from '../context/AppContext';
 import { storageService } from '../services/storageService';
 import {
   INITIAL_AGENTS,
-  INITIAL_DECISIONS,
-  INITIAL_PROJECTS,
-  INITIAL_TASKS,
-  INITIAL_ROUTERS,
-  INITIAL_TOWERS,
-  INITIAL_ADMIN_ITEMS,
-  INITIAL_AUDIT_EVENTS,
-  INITIAL_DELIVERABLES
+  INITIAL_TASKS
 } from '../data/mockData';
 
 // Helper component for context testing
-const TestConsumer = ({ onReady }: { onReady: (ctx: ReturnType<typeof useApp>) => void }) => {
-  const ctx = useApp();
-  React.useEffect(() => {
-    onReady(ctx);
-  }, [ctx, onReady]);
+let latestCtx: ReturnType<typeof useApp>;
+const TestConsumer = () => {
+  latestCtx = useApp();
   return <div data-testid="test-consumer">Ready</div>;
 };
 
@@ -164,16 +155,15 @@ describe('NUGA Team Console - Complete Test Suite', () => {
   // 6. CREACIÓN DE TAREA DEMO Y CAMBIO DE ESTADO
   describe('6. Creación y Mutación de Tareas DEMO', () => {
     it('debe permitir crear una nueva tarea DEMO y persistirla en estado', async () => {
-      let ctx: any;
       render(
         <AppProvider>
-          <TestConsumer onReady={c => (ctx = c)} />
+          <TestConsumer />
         </AppProvider>
       );
 
-      const initialCount = ctx.tasks.length;
-      act(() => {
-        ctx.createTask({
+      const initialCount = latestCtx.tasks.length;
+      await act(async () => {
+        await latestCtx.createTask({
           title: 'Prueba Automatizada de Tarea',
           description: 'Validación en sandbox local',
           assignedAgent: 'nugacore',
@@ -183,65 +173,62 @@ describe('NUGA Team Console - Complete Test Suite', () => {
         });
       });
 
-      expect(ctx.tasks.length).toBe(initialCount + 1);
-      const created = ctx.tasks.find((t: any) => t.title === 'Prueba Automatizada de Tarea');
+      expect(latestCtx.tasks.length).toBe(initialCount + 1);
+      const created = latestCtx.tasks.find((t: any) => t.title === 'Prueba Automatizada de Tarea');
       expect(created).toBeDefined();
       expect(created.isDemo).toBe(true);
     });
 
-    it('debe actualizar el estado de una tarea', () => {
-      let ctx: any;
+    it('debe actualizar el estado de una tarea', async () => {
       render(
         <AppProvider>
-          <TestConsumer onReady={c => (ctx = c)} />
+          <TestConsumer />
         </AppProvider>
       );
 
-      const taskToUpdate = ctx.tasks[0];
-      act(() => {
-        ctx.updateTask(taskToUpdate.id, { status: 'completed' });
+      const taskToUpdate = latestCtx.tasks[0];
+      await act(async () => {
+        await latestCtx.updateTask(taskToUpdate.id, { status: 'completed' });
       });
 
-      const updated = ctx.tasks.find((t: any) => t.id === taskToUpdate.id);
+      const updated = latestCtx.tasks.find((t: any) => t.id === taskToUpdate.id);
       expect(updated.status).toBe('completed');
     });
   });
 
   // 7. APROBACIÓN, RECHAZO Y CONFIRMACIÓN REFORZADA DE DECISIÓN
   describe('7. Flujo de Decisiones y Confirmación Reforzada', () => {
-    it('debe rechazar una decisión registrando el motivo', () => {
-      let ctx: any;
+    it('debe rechazar una decisión registrando el motivo', async () => {
       render(
         <AppProvider>
-          <TestConsumer onReady={c => (ctx = c)} />
+          <TestConsumer />
         </AppProvider>
       );
 
-      const pendingDecision = ctx.decisions.find((d: any) => d.status === 'pending');
+      const pendingDecision = latestCtx.decisions.find((d: any) => d.status === 'pending');
       expect(pendingDecision).toBeDefined();
 
-      act(() => {
-        ctx.executeDecisionAction(pendingDecision.id, 'reject', 'Rechazado por prueba automatizada');
+      await act(async () => {
+        await latestCtx.executeDecisionAction(pendingDecision.id, 'reject', 'Rechazado por prueba automatizada');
       });
 
-      const updated = ctx.decisions.find((d: any) => d.id === pendingDecision.id);
+      const updated = latestCtx.decisions.find((d: any) => d.id === pendingDecision.id);
       expect(updated.status).toBe('rejected');
       expect(updated.rejectionReason).toBe('Rechazado por prueba automatizada');
     });
 
-    it('debe aprobar una decisión con riesgo alto cuando se provee la confirmación', () => {
-      let ctx: any;
+    it('debe aprobar una decisión con riesgo alto cuando se provee la confirmación', async () => {
       render(
         <AppProvider>
-          <TestConsumer onReady={c => (ctx = c)} />
+          <TestConsumer />
         </AppProvider>
       );
 
-      const highRiskDecision = ctx.decisions.find((d: any) => d.risk === 'critical');
+      const highRiskDecision = latestCtx.decisions.find((d: any) => d.risk === 'critical');
       expect(highRiskDecision).toBeDefined();
 
-      act(() => {
-        ctx.executeDecisionAction(
+      await act(async () => {
+        await latestCtx.executeDecisionAction(
           highRiskDecision.id,
           'approve',
           'Aprobación confirmada con token de seguridad',
@@ -249,7 +236,7 @@ describe('NUGA Team Console - Complete Test Suite', () => {
         );
       });
 
-      const updated = ctx.decisions.find((d: any) => d.id === highRiskDecision.id);
+      const updated = latestCtx.decisions.find((d: any) => d.id === highRiskDecision.id);
       expect(updated.status).toBe('approved');
     });
   });
@@ -257,18 +244,17 @@ describe('NUGA Team Console - Complete Test Suite', () => {
   // 8. CAMBIO DE TEMA
   describe('8. Cambio de Tema', () => {
     it('debe alternar el tema entre dark y light', () => {
-      let ctx: any;
       render(
         <AppProvider>
-          <TestConsumer onReady={c => (ctx = c)} />
+          <TestConsumer />
         </AppProvider>
       );
 
-      const initialTheme = ctx.theme;
+      const initialTheme = latestCtx.theme;
       act(() => {
-        ctx.toggleTheme();
+        latestCtx.toggleTheme();
       });
-      expect(ctx.theme).toBe(initialTheme === 'dark' ? 'light' : 'dark');
+      expect(latestCtx.theme).toBe(initialTheme === 'dark' ? 'light' : 'dark');
     });
   });
 
@@ -305,16 +291,15 @@ describe('NUGA Team Console - Complete Test Suite', () => {
       expect(stored.some(t => t.id === 'test-task-1')).toBe(true);
     });
 
-    it('debe restablecer todos los datos DEMO a su estado inicial', () => {
-      let ctx: any;
+    it('debe restablecer todos los datos DEMO a su estado inicial', async () => {
       render(
         <AppProvider>
-          <TestConsumer onReady={c => (ctx = c)} />
+          <TestConsumer />
         </AppProvider>
       );
 
-      act(() => {
-        ctx.createTask({
+      await act(async () => {
+        await latestCtx.createTask({
           title: 'Tarea a eliminar con reset',
           description: 'Temp',
           assignedAgent: 'marketing',
@@ -324,8 +309,8 @@ describe('NUGA Team Console - Complete Test Suite', () => {
         });
       });
 
-      act(() => {
-        ctx.resetAllDemoData();
+      await act(async () => {
+        await latestCtx.resetAllDemoData();
       });
 
       const resetTasks = storageService.getTasks();

@@ -12,11 +12,14 @@ import {
   Sliders,
   ChevronDown,
   Menu,
-  LogOut
+  LogOut,
+  Lock,
+  Server
 } from 'lucide-react';
 import { useApp, ScreenId } from '../../context/AppContext';
 import { HermesStatus } from '../../types';
 import { APP_INFO } from '../../constants';
+import { EnvironmentSelector } from './EnvironmentSelector';
 
 export const Topbar: React.FC = () => {
   const {
@@ -28,6 +31,8 @@ export const Topbar: React.FC = () => {
     tasks,
     decisions,
     notifications,
+    appMode,
+    serverStatus,
     setIsNotificationCenterOpen,
     setIsMobileSidebarOpen,
     setIsSearchModalOpen,
@@ -39,7 +44,7 @@ export const Topbar: React.FC = () => {
   const userRef = useRef<HTMLDivElement>(null);
 
   const [isHermesPopoverOpen, setIsHermesPopoverOpen] = useState(false);
-  const [hermesStatus, setHermesStatus] = useState<HermesStatus>('No conectado');
+  const [demoHermesStatus, setDemoHermesStatus] = useState<HermesStatus>('No conectado');
   const hermesRef = useRef<HTMLDivElement>(null);
 
   const activeTasksCount = (tasks || []).filter(t => t.status === 'in_progress' || t.status === 'review').length;
@@ -47,6 +52,12 @@ export const Topbar: React.FC = () => {
   const criticalDecisionsCount = (decisions || []).filter(d => d.status === 'pending' && (d.risk === 'critical' || d.risk === 'high')).length;
   const unreadNotifs = (notifications || []).filter(n => !n.read);
   const hasCriticalUnread = unreadNotifs.some(n => n.priority === 'urgente' || n.priority === 'alta');
+
+  const isDemo = appMode === 'demo';
+  const isStaging = appMode === 'staging';
+  const isProduction = appMode === 'production';
+
+  const effectiveHermesStatus = isDemo ? demoHermesStatus : (serverStatus?.hermes === 'available' ? 'Disponible' : serverStatus?.hermes === 'degraded' ? 'Atención requerida' : 'No conectado');
 
   const screenTitles: Record<ScreenId, { title: string; subtitle: string }> = {
     resumen: { title: 'Resumen Ejecutivo', subtitle: 'Centro de mando y balance general de los 5 perfiles del equipo' },
@@ -109,8 +120,16 @@ export const Topbar: React.FC = () => {
             <h1 className="text-sm sm:text-base font-bold text-white truncate">
               {screenTitles[currentScreen]?.title || 'Resumen Ejecutivo'}
             </h1>
-            <span className="hidden sm:inline-block bg-orange-500/10 text-orange-400 text-[10px] border border-orange-500/20 px-2 py-0.5 rounded font-mono uppercase tracking-tight shrink-0">
-              Modo DEMO Activo
+            <span
+              className={`hidden sm:inline-block text-[10px] border px-2 py-0.5 rounded font-mono uppercase tracking-tight shrink-0 ${
+                isProduction
+                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                  : isStaging
+                  ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                  : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+              }`}
+            >
+              {isProduction ? 'Modo PRODUCCIÓN Activo' : isStaging ? 'Modo STAGING Activo' : 'Modo DEMO Activo'}
             </span>
           </div>
           <p className="text-xs text-[#94A3B8] hidden md:block truncate max-w-xs sm:max-w-md lg:max-w-xl mt-0.5" title={screenTitles[currentScreen]?.subtitle}>
@@ -121,34 +140,45 @@ export const Topbar: React.FC = () => {
 
       {/* Right controls */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 shrink-0">
+        {/* Environment Selector for Admins */}
+        <EnvironmentSelector />
+
         {/* Hermes Status Indicator Pill with interactive Popover */}
         <div className="relative" ref={hermesRef}>
           <button
             id="hermes-status-indicator-btn"
             onClick={() => setIsHermesPopoverOpen(prev => !prev)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#111D27] hover:bg-[#1E293B] border border-[#1E293B] text-xs font-mono transition-all cursor-pointer"
-            title="Estado del motor de agentes Hermes (DEMO)"
-            aria-label="Estado del motor de agentes Hermes (DEMO)"
+            title={`Estado del motor de agentes Hermes (${isProduction ? 'PRODUCCIÓN' : isStaging ? 'STAGING' : 'DEMO'})`}
+            aria-label="Estado del motor de agentes Hermes"
           >
             <span
               className={`w-2 h-2 rounded-full shrink-0 ${
-                hermesStatus === 'Disponible'
+                effectiveHermesStatus === 'Disponible'
                   ? 'bg-emerald-400'
-                  : hermesStatus === 'Procesando tarea' || hermesStatus === 'Sincronizando'
+                  : effectiveHermesStatus === 'Procesando tarea' || effectiveHermesStatus === 'Sincronizando'
                   ? 'bg-sky-400 animate-pulse'
-                  : hermesStatus === 'Atención requerida'
+                  : effectiveHermesStatus === 'Atención requerida'
                   ? 'bg-amber-400 animate-pulse'
-                  : hermesStatus === 'Error'
+                  : effectiveHermesStatus === 'Error'
                   ? 'bg-rose-400'
                   : 'bg-slate-400'
               }`}
             />
             <span className="text-[#94A3B8] hidden lg:inline text-[11px]">Hermes ·</span>
-            <span className="text-orange-400 font-bold text-[10px] px-1 bg-orange-500/10 rounded border border-orange-500/20">
-              DEMO
+            <span
+              className={`font-bold text-[10px] px-1 rounded border ${
+                isProduction
+                  ? 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+                  : isStaging
+                  ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
+                  : 'text-orange-400 bg-orange-500/10 border-orange-500/20'
+              }`}
+            >
+              {isProduction ? 'PROD' : isStaging ? 'STAGING' : 'DEMO'}
             </span>
             <span className="text-[#E0E7FF] font-semibold text-[11px] hidden sm:inline truncate max-w-[110px]">
-              · {hermesStatus}
+              · {effectiveHermesStatus}
             </span>
           </button>
 
@@ -166,8 +196,16 @@ export const Topbar: React.FC = () => {
                     <span className="text-[10px] text-[#64748B]">Plataforma de orquestación</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-mono font-bold">
-                  DEMO
+                <span
+                  className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold ${
+                    isProduction
+                      ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                      : isStaging
+                      ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                      : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                  }`}
+                >
+                  {isProduction ? 'PRODUCCIÓN' : isStaging ? 'STAGING' : 'DEMO'}
                 </span>
               </div>
 
@@ -176,47 +214,61 @@ export const Topbar: React.FC = () => {
                 <div className="flex items-center gap-2 text-white font-mono font-bold">
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      hermesStatus === 'Disponible'
+                      effectiveHermesStatus === 'Disponible'
                         ? 'bg-emerald-400'
-                        : hermesStatus === 'Procesando tarea' || hermesStatus === 'Sincronizando'
+                        : effectiveHermesStatus === 'Procesando tarea' || effectiveHermesStatus === 'Sincronizando'
                         ? 'bg-sky-400 animate-pulse'
-                        : hermesStatus === 'Atención requerida'
+                        : effectiveHermesStatus === 'Atención requerida'
                         ? 'bg-amber-400 animate-pulse'
-                        : hermesStatus === 'Error'
+                        : effectiveHermesStatus === 'Error'
                         ? 'bg-rose-400'
                         : 'bg-slate-400'
                     }`}
                   />
-                  <span>Hermes · DEMO · {hermesStatus}</span>
+                  <span>Hermes · {isProduction ? 'PROD' : isStaging ? 'STAGING' : 'DEMO'} · {effectiveHermesStatus}</span>
                 </div>
                 <p className="text-[11px] text-[#94A3B8] leading-relaxed pt-1">
-                  Hermes es el motor simulado de agentes en memoria local. No existe conexión externa ni versión productiva vinculada.
+                  {isDemo && 'Hermes opera en simulación local sin conexión a brokers externos ni APIs productivas.'}
+                  {isStaging && 'Hermes conectado al entorno de pruebas de laboratorio no productivo.'}
+                  {isProduction && 'Hermes conectado a la infraestructura productiva bajo control de acceso.'}
                 </p>
-                <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
-                  ⚠️ <strong>Aviso DEMO:</strong> No conectado a servicios externos, MikroTik RouterOS ni APIs remotas.
+                <div
+                  className={`mt-2 p-2 rounded border text-[11px] ${
+                    isProduction
+                      ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                      : isStaging
+                      ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-300'
+                      : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                  }`}
+                >
+                  {isDemo && '⚠️ Aviso DEMO: No conectado a servicios externos, MikroTik RouterOS ni APIs remotas.'}
+                  {isStaging && '🧪 Aviso STAGING: Conectado a sandbox de laboratorio. Operaciones de escritura restringidas.'}
+                  {isProduction && '🔒 Aviso PRODUCCIÓN: Operaciones auditadas y registradas criptográficamente.'}
                 </div>
               </div>
 
-              <div>
-                <span className="text-[10px] text-[#64748B] uppercase font-bold tracking-wider block mb-2">
-                  Cambiar Estado Simulado de Hermes:
-                </span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(['No conectado', 'Disponible', 'Sincronizando', 'Procesando tarea', 'Atención requerida', 'Error'] as const).map(st => (
-                    <button
-                      key={st}
-                      onClick={() => setHermesStatus(st)}
-                      className={`px-2.5 py-1.5 rounded text-[11px] text-left transition-colors cursor-pointer ${
-                        hermesStatus === st
-                          ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50 font-bold'
-                          : 'bg-[#0A141D] hover:bg-[#1E293B] text-[#94A3B8]'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
+              {isDemo && (
+                <div>
+                  <span className="text-[10px] text-[#64748B] uppercase font-bold tracking-wider block mb-2">
+                    Cambiar Estado Simulado de Hermes (DEMO):
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(['No conectado', 'Disponible', 'Sincronizando', 'Procesando tarea', 'Atención requerida', 'Error'] as const).map(st => (
+                      <button
+                        key={st}
+                        onClick={() => setDemoHermesStatus(st)}
+                        className={`px-2.5 py-1.5 rounded text-[11px] text-left transition-colors cursor-pointer ${
+                          demoHermesStatus === st
+                            ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50 font-bold'
+                            : 'bg-[#0A141D] hover:bg-[#1E293B] text-[#94A3B8]'
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>

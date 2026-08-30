@@ -458,3 +458,61 @@ export interface AppSettings {
   higgsfieldApiStatus: 'mock_sandbox' | 'disconnected';
   isDemo?: boolean;
 }
+
+export type AppMode = 'demo' | 'staging' | 'production';
+
+export interface ServerStatusContract {
+  mode: AppMode;
+  source: 'server' | 'client';
+  hermes: 'not_connected' | 'available' | 'degraded' | 'unavailable';
+  writesEnabled: boolean;
+  integrations: {
+    nugacore: boolean;
+    mikromcp: boolean;
+    google: boolean;
+  };
+}
+
+export interface BackendCapabilities {
+  canReadRealData: boolean;
+  canRequestDryRun: boolean;
+  canSubmitApproval: boolean;
+  canExecuteAuthorizedOperation: boolean;
+}
+
+export interface AppConfig {
+  mode: AppMode;
+  apiUrl: string;
+  isDemo: boolean;
+  isStaging: boolean;
+  isProduction: boolean;
+  capabilities: BackendCapabilities;
+}
+
+export type ProviderStatus = 'idle' | 'loading' | 'success' | 'empty' | 'unavailable' | 'unauthorized' | 'error';
+
+export interface ProviderResult<T> {
+  data?: T;
+  status: ProviderStatus;
+  error?: string;
+  isDemo?: boolean;
+  timestamp?: string;
+}
+
+export interface AuditRecordPayload {
+  actorType: 'user' | 'agent' | 'system';
+  actorName: string;
+  action: string;
+  actionType: 'requested' | 'approved' | 'executed' | 'failed' | 'reverted';
+  resourceType: 'router' | 'decision' | 'task' | 'campaign' | 'config' | 'tower' | 'deliverable' | 'system';
+  resourceId: string;
+  resourceLabel: string;
+  result: 'success' | 'warning' | 'failure';
+  risk: RiskLevel;
+  scopeImpact: string;
+  humanExplanation: string;
+  jsonPayload?: Record<string, any>;
+  dataSource?: 'local_demo' | 'api_staging' | 'api_production';
+  mode?: AppMode;
+  correlationId?: string;
+}

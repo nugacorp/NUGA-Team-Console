@@ -49,13 +49,19 @@ export const Sidebar: React.FC = () => {
     toggleTheme,
     decisions,
     tasks,
-    incidents
+    incidents,
+    appMode,
+    serverStatus
   } = useApp();
 
-  const pendingDecisionsCount = decisions.filter(d => d.status === 'pending').length;
-  const criticalDecisionsCount = decisions.filter(d => d.status === 'pending' && d.risk === 'critical').length;
-  const activeTasksCount = tasks.filter(t => t.status === 'in_progress' || t.status === 'review').length;
-  const openIncidentsCount = incidents.filter(i => i.status === 'open' || i.status === 'investigating' || i.status === 'mitigating').length;
+  const isProduction = appMode === 'production';
+  const isStaging = appMode === 'staging';
+  const isDemo = appMode === 'demo';
+
+  const pendingDecisionsCount = (decisions || []).filter(d => d.status === 'pending').length;
+  const criticalDecisionsCount = (decisions || []).filter(d => d.status === 'pending' && (d.risk === 'critical' || d.risk === 'high')).length;
+  const activeTasksCount = (tasks || []).filter(t => t.status === 'in_progress' || t.status === 'review').length;
+  const openIncidentsCount = (incidents || []).filter(i => i.status === 'open' || i.status === 'investigating' || i.status === 'mitigating').length;
 
   const navSections: NavSection[] = [
     {
@@ -217,22 +223,45 @@ export const Sidebar: React.FC = () => {
                 <Terminal className="w-3.5 h-3.5 text-blue-400" />
                 <span>NUGA Team Console</span>
               </div>
-              <span className="text-[10px] font-mono text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
-                v{APP_INFO.version}
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                  isProduction
+                    ? 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+                    : isStaging
+                    ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
+                    : 'text-orange-400 bg-orange-500/10 border-orange-500/20'
+                }`}
+              >
+                {isProduction ? 'PROD' : isStaging ? 'STAGING' : 'DEMO'}
               </span>
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
               <div className="flex items-center gap-1.5 truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
-                <span className="truncate">Hermes: DEMO / no conectado</span>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    serverStatus?.hermes === 'available'
+                      ? 'bg-emerald-400'
+                      : serverStatus?.hermes === 'degraded'
+                      ? 'bg-amber-400'
+                      : 'bg-slate-500'
+                  }`}
+                />
+                <span className="truncate">
+                  Hermes: {isDemo ? 'DEMO / no conectado' : serverStatus?.hermes === 'available' ? 'Disponible' : serverStatus?.hermes === 'degraded' ? 'Degradado' : 'No disponible'}
+                </span>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-[#1E293B]/70 text-[11px] text-[#64748B]">
               <div className="flex items-center gap-1">
                 <Database className="w-3 h-3 text-[#64748B]" />
-                <span>Almacenamiento: <strong className="text-[#94A3B8] font-normal">Local</strong></span>
+                <span>
+                  Almacenamiento:{' '}
+                  <strong className="text-[#94A3B8] font-normal">
+                    {isDemo ? 'Local' : isStaging ? 'Staging API' : 'Prod API'}
+                  </strong>
+                </span>
               </div>
 
               {/* Theme indicator and toggle */}
@@ -253,9 +282,16 @@ export const Sidebar: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-1">
-            <div className="relative group cursor-pointer" title={`NUGA Team Console v${APP_INFO.version}\nHermes: DEMO / no conectado\nAlmacenamiento: Local`}>
+            <div
+              className="relative group cursor-pointer"
+              title={`NUGA Team Console v${APP_INFO.version}\nModo: ${isProduction ? 'PRODUCCIÓN' : isStaging ? 'STAGING' : 'DEMO'}\nHermes: ${isDemo ? 'DEMO / no conectado' : serverStatus?.hermes || 'No conectado'}\nAlmacenamiento: ${isDemo ? 'Local' : 'API Remota'}`}
+            >
               <Terminal className="w-4 h-4 text-blue-400" />
-              <span className="w-2 h-2 rounded-full bg-slate-500 absolute -top-0.5 -right-0.5 border border-[#0A141D]" />
+              <span
+                className={`w-2 h-2 rounded-full absolute -top-0.5 -right-0.5 border border-[#0A141D] ${
+                  isProduction ? 'bg-rose-500' : isStaging ? 'bg-yellow-500' : 'bg-orange-500'
+                }`}
+              />
             </div>
             <button
               onClick={toggleTheme}
