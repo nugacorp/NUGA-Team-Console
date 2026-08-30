@@ -226,11 +226,11 @@ export class DemoConversationsProvider implements ConversationsProvider {
   async sendMessage(
     conversationId: string,
     content: string,
-    sender: 'user' | AgentRole,
+    _sender: 'user' | AgentRole,
     attachments?: MessageAttachment[]
   ): Promise<ProviderResult<Message>> {
-    const msg = storageService.sendMessage(conversationId, content, sender, attachments);
-    return demoSuccess(tagDemo(msg));
+    const { botMessage } = storageService.sendMessage(conversationId, content, { attachments });
+    return demoSuccess(tagDemo(botMessage));
   }
 }
 
@@ -440,6 +440,7 @@ export class DemoAuditProvider implements AuditProvider {
   async logAuditEvent(payload: AuditRecordPayload): Promise<ProviderResult<AuditEvent>> {
     const logged = storageService.logAuditEvent({
       ...payload,
+      jsonPayload: payload.jsonPayload || {},
       dataSource: 'local_demo',
       mode: 'demo'
     });

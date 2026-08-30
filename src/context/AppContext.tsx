@@ -494,9 +494,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addTaskComment = useCallback(async (taskId: string, commentText: string) => {
     const res = await providers.tasks.addTaskComment(taskId, {
-      authorRole: user.role === 'admin' ? 'ramiro' : 'director',
       authorName: user.name,
-      content: commentText
+      text: commentText,
+      isAgent: false
     });
     if (res.data) {
       setTasks(prev =>

@@ -85,7 +85,7 @@ export function getAppConfig(): AppConfig {
   const rawApiUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_NUGA_API_URL : undefined;
 
   const mode = validateAndResolveAppMode(rawEnvMode);
-  const apiUrl = rawApiUrl && rawApiUrl.trim() !== '' ? rawApiUrl.trim() : 'http://localhost:3000';
+  const apiUrl = rawApiUrl && rawApiUrl.trim() !== '' ? rawApiUrl.trim() : '/api';
 
   return {
     mode,

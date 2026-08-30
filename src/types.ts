@@ -179,6 +179,10 @@ export interface Decision {
   deadline: string;
   timePendingHours: number;
   status: DecisionStatus;
+  /** Motivo explícito registrado si la decisión fue rechazada */
+  rejectionReason?: string;
+  /** Token o texto de confirmación reforzada si la decisión era de riesgo crítico */
+  confirmationToken?: string;
   history: DecisionActionLog[];
   createdAt: string;
   isDemo?: boolean;
@@ -428,6 +432,8 @@ export interface AuditEvent {
   correlationId: string;
   relatedApprovalId?: string;
   jsonPayload: Record<string, any>;
+  dataSource?: 'local_demo' | 'api_staging' | 'api_production';
+  mode?: AppMode;
   isDemo?: boolean;
 }
 

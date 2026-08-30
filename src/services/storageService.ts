@@ -142,6 +142,10 @@ export class StorageService {
     return getItem<Project[]>(STORAGE_KEYS.PROJECTS, INITIAL_PROJECTS);
   }
 
+  saveProjects(projects: Project[]): void {
+    setItem(STORAGE_KEYS.PROJECTS, projects);
+  }
+
   createProject(project: Omit<Project, 'id' | 'code'>): Project {
     const projects = this.getProjects();
     const newProject: Project = {
@@ -331,6 +335,10 @@ export class StorageService {
     return getItem<WispIncident[]>(STORAGE_KEYS.INCIDENTS, INITIAL_INCIDENTS);
   }
 
+  saveIncidents(incidents: WispIncident[]): void {
+    setItem(STORAGE_KEYS.INCIDENTS, incidents);
+  }
+
   createIncident(incidentData: Omit<WispIncident, 'id' | 'code' | 'detectedAt' | 'timeline'>): WispIncident {
     const incidents = this.getIncidents();
     const newInc: WispIncident = {
@@ -388,20 +396,32 @@ export class StorageService {
     return getItem<MediaAsset[]>(STORAGE_KEYS.MEDIA_ASSETS, INITIAL_MEDIA_ASSETS);
   }
 
+  saveMediaAssets(assets: MediaAsset[]): void {
+    setItem(STORAGE_KEYS.MEDIA_ASSETS, assets);
+  }
+
   getDeliverables(): Deliverable[] {
     return getItem<Deliverable[]>(STORAGE_KEYS.DELIVERABLES, INITIAL_DELIVERABLES);
   }
 
-  updateDeliverableStatus(id: string, status: Deliverable['status']): Deliverable[] {
+  saveDeliverables(deliverables: Deliverable[]): void {
+    setItem(STORAGE_KEYS.DELIVERABLES, deliverables);
+  }
+
+  updateDeliverableStatus(id: string, status: Deliverable['status']): Deliverable {
     const deliverables = this.getDeliverables();
     const updated = deliverables.map(d => d.id === id ? { ...d, status } : d);
     setItem(STORAGE_KEYS.DELIVERABLES, updated);
-    return updated;
+    return updated.find(d => d.id === id)!;
   }
 
   // --- ADMIN & AUDIT ---
   getAdminItems(): AdminItem[] {
     return getItem<AdminItem[]>(STORAGE_KEYS.ADMIN_ITEMS, INITIAL_ADMIN_ITEMS);
+  }
+
+  saveAdminItems(items: AdminItem[]): void {
+    setItem(STORAGE_KEYS.ADMIN_ITEMS, items);
   }
 
   createAdminItem(itemData: Omit<AdminItem, 'id'>): AdminItem {
@@ -592,6 +612,13 @@ export class StorageService {
     const updated = notifs.map(n => n.id === id ? { ...n, read: true } : n);
     setItem(STORAGE_KEYS.NOTIFICATIONS, updated);
     return updated;
+  }
+
+  /**
+   * Alias de compatibilidad hacia markNotificationAsRead (nombre canónico)
+   */
+  markNotificationRead(id: string): AppNotification[] {
+    return this.markNotificationAsRead(id);
   }
 
   toggleNotificationRead(id: string): AppNotification[] {

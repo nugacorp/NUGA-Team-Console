@@ -523,7 +523,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   retainLogsDays: 90,
   telegramNotificationsSimulated: true,
   maxAgentExecutionMinutes: 45,
-  hermesEngineStatus: 'Operativo',
+  hermesEngineStatus: 'No conectado',
   mcpServerStatus: 'connected_demo',
   mikrotikApiStatus: 'mock_sandbox',
   higgsfieldApiStatus: 'mock_sandbox',
