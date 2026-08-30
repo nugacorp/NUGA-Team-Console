@@ -42,7 +42,18 @@ function parseSession(value: unknown): AuthSession | null {
     return null;
   }
 
-  return { user, csrfToken, expiresAt };
+  return {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: typeof user.email === 'string' ? user.email : '',
+      role: user.role,
+      title: typeof user.title === 'string' ? user.title : 'Propietario',
+      avatar: typeof user.avatar === 'string' ? user.avatar : ''
+    },
+    csrfToken,
+    expiresAt
+  };
 }
 
 export class AuthClient {
