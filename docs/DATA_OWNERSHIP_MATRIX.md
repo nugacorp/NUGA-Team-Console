@@ -1,6 +1,6 @@
 # Matriz de propiedad de datos
 
-**Estado:** contrato aprobado para diseño; Supabase y Hermes permanecen desconectados.
+**Estado:** contrato aprobado; esquema Supabase declarativo y Hermes permanece sin conexión desde NUGA Console API.
 
 NUGA Team Console combina dominios distintos. Hermes no debe convertirse en una
 base empresarial general y la base de la consola no debe duplicar el Kanban. Cada
@@ -27,13 +27,13 @@ registro tiene una sola autoridad canónica.
 | Tareas | Hermes | Kanban | Adaptador pendiente |
 | Comentarios y runs | Hermes | Kanban | Adaptador pendiente |
 | Proyectos de negocio | NUGA Console | Supabase propuesto | Esquema pendiente |
-| Decisiones/aprobaciones | NUGA Console | Supabase propuesto | Esquema pendiente |
-| Entregables | NUGA Console | Supabase; referencia Hermes opcional | Esquema pendiente |
+| Decisiones/aprobaciones | NUGA Console | Supabase propuesto | Esquema declarativo listo |
+| Entregables | NUGA Console | Supabase; referencia Hermes opcional | Esquema declarativo listo |
 | Incidentes WISP | NUGA Console | Supabase propuesto | MikroMCP desconectado |
 | Campañas y medios | NUGA Console | Supabase/Storage futuros | Desconectado |
 | Administración | NUGA Console | Supabase propuesto | Esquema pendiente |
 | Notificaciones | NUGA Console | Supabase/Realtime futuro | Desconectado |
-| Auditoría de consola | NUGA Console | Tabla append-only | Esquema pendiente |
+| Auditoría de consola | NUGA Console | Tabla append-only | Esquema declarativo listo |
 | Métricas | Derivadas | No son una fuente canónica | Agregador pendiente |
 | Telemetría RouterOS | Adaptador externo | Sistema original | Prohibida en esta fase |
 
@@ -64,8 +64,10 @@ y no pueden cambiar el estado operativo de una tarea.
 ## Uso propuesto de Supabase
 
 Supabase es necesario como persistencia de los dominios propios de la consola,
-pero todavía no está creado ni conectado. Antes de provisionarlo se requiere una
-migración revisada, RLS en toda tabla expuesta y pruebas negativas.
+pero todavía no está creado ni conectado. El esquema declarativo mínimo vive en
+`supabase/schemas/nuga_console.sql`; antes de provisionarlo se generará una
+migración con la CLI oficial, se revisará, se aplicará solo a staging y se
+ejecutarán pruebas negativas y asesores.
 
 - La autenticación local de Ramiro se conserva inicialmente.
 - El navegador nunca recibe `service_role`, secretos o conexión PostgreSQL.
