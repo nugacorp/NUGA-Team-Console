@@ -4,6 +4,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { GlobalSearchModal } from './components/layout/GlobalSearchModal';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { AuthGate } from './auth/AuthGate';
 
 // Screens
 import { ResumenEjecutivoScreen } from './components/screens/ResumenEjecutivoScreen';
@@ -105,8 +106,10 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <AuthGate>
+      <AppProvider>
+        <MainLayout />
+      </AppProvider>
+    </AuthGate>
   );
 }
