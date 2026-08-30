@@ -6,6 +6,8 @@ export interface ServerConfig {
   port: number;
   publicOrigin: string;
   sessionSecret: string;
+  ownerUsername: string;
+  ownerPasswordHash: string;
 }
 
 export class ServerConfigurationError extends Error {
@@ -59,6 +61,27 @@ export function loadServerConfig(
   if (sessionSecret.length < 32) {
     throw new ServerConfigurationError(
       'NUGA_SESSION_SECRET debe existir y contener al menos 32 caracteres.'
+    );
+  }
+
+  const ownerUsername = environment.NUGA_OWNER_USERNAME?.trim() ?? '';
+  const ownerPasswordHash = environment.NUGA_OWNER_PASSWORD_HASH?.trim() ?? '';
+
+  if (!ownerUsername) {
+    throw new ServerConfigurationError('NUGA_OWNER_USERNAME es obligatorio.');
+  }
+  if (!ownerPasswordHash.startsWith('scrypt-v1
+    host: environment.NUGA_SERVER_HOST || '127.0.0.1',
+    port: parsePort(environment.NUGA_SERVER_PORT),
+    publicOrigin: parseOrigin(environment.NUGA_PUBLIC_ORIGIN),
+    sessionSecret,
+    ownerUsername,
+    ownerPasswordHash
+  };
+}
+)) {
+    throw new ServerConfigurationError(
+      'NUGA_OWNER_PASSWORD_HASH debe contener un hash scrypt-v1 válido.'
     );
   }
 
