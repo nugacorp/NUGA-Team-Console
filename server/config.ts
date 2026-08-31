@@ -11,6 +11,9 @@ export interface ServerConfig {
   hermesReadOnlyEnabled: boolean;
   hermesBinary: string;
   hermesBoards: string[];
+  supabaseEnabled: boolean;
+  supabaseUrl: string;
+  supabaseSecretKey: string;
 }
 
 export class ServerConfigurationError extends Error {
@@ -94,6 +97,28 @@ export function loadServerConfig(
     );
   }
 
+  const supabaseEnabled = environment.NUGA_SUPABASE_ENABLED === 'true';
+  const supabaseUrl = environment.NUGA_SUPABASE_URL?.trim() ?? '';
+  const supabaseSecretKey = environment.NUGA_SUPABASE_SECRET_KEY?.trim() ?? '';
+  if (supabaseEnabled) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(supabaseUrl);
+    } catch {
+      throw new ServerConfigurationError(
+        'NUGA_SUPABASE_URL debe ser una URL HTTPS válida.'
+      );
+    }
+    if (parsedUrl.protocol !== 'https:') {
+      throw new ServerConfigurationError('NUGA_SUPABASE_URL debe usar HTTPS.');
+    }
+    if (!supabaseSecretKey.startsWith('sb_secret_')) {
+      throw new ServerConfigurationError(
+        'NUGA_SUPABASE_SECRET_KEY debe contener una clave secreta moderna de Supabase.'
+      );
+    }
+  }
+
   return {
     mode: parseServerMode(environment.NUGA_SERVER_MODE),
     host: environment.NUGA_SERVER_HOST || '127.0.0.1',
@@ -104,6 +129,9 @@ export function loadServerConfig(
     ownerPasswordHash,
     hermesReadOnlyEnabled,
     hermesBinary: environment.NUGA_HERMES_BINARY || '/home/ramiro/.local/bin/hermes',
-    hermesBoards
+    hermesBoards,
+    supabaseEnabled,
+    supabaseUrl,
+    supabaseSecretKey
   };
 }
