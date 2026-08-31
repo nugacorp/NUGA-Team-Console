@@ -3,6 +3,10 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const schema = readFileSync(resolve(process.cwd(), 'supabase/schemas/nuga_console.sql'), 'utf8');
+const backendAccess = readFileSync(
+  resolve(process.cwd(), 'supabase/schemas/nuga_console_backend_access.sql'),
+  'utf8'
+);
 
 const tables = ['task_extensions', 'decisions', 'deliverables', 'audit_events'] as const;
 
@@ -35,5 +39,12 @@ describe('Supabase console-owned schema baseline', () => {
   it('links extensions to Hermes identifiers without duplicating Hermes tasks', () => {
     expect(schema).toContain('unique (hermes_board_slug, hermes_task_id)');
     expect(schema).not.toMatch(/create table nuga_console\.(tasks|boards|comments|runs)\b/i);
+  });
+
+  it('grants the backend no destructive access and keeps browser roles denied', () => {
+    expect(backendAccess).toContain('grant select, insert\n  on nuga_console.audit_events');
+    expect(backendAccess).toContain('revoke delete, truncate');
+    expect(backendAccess).toContain('from service_role');
+    expect(backendAccess).not.toMatch(/grant\s+.+\s+to\s+(anon|authenticated)/i);
   });
 });
