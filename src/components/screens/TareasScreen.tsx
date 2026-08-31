@@ -21,6 +21,7 @@ export const TareasScreen: React.FC = () => {
     setSelectedTaskId,
     projects,
     agents,
+    appMode,
     openModal
   } = useApp();
 
@@ -37,6 +38,7 @@ export const TareasScreen: React.FC = () => {
     { id: 'backlog', label: 'Backlog / Plan', color: 'border-[#1E293B]' },
     { id: 'ready', label: 'Listas', color: 'border-blue-500/40' },
     { id: 'in_progress', label: 'En Progreso', color: 'border-orange-500/40' },
+    { id: 'blocked', label: 'Bloqueadas', color: 'border-rose-500/40' },
     { id: 'review', label: 'En Revisión', color: 'border-purple-500/40' },
     { id: 'done', label: 'Completadas', color: 'border-green-500/40' }
   ];
@@ -78,7 +80,7 @@ export const TareasScreen: React.FC = () => {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-white">Tablero de Tareas & Operaciones</h2>
               <span className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono font-bold text-blue-400">
-                DEMO
+                {appMode === 'demo' ? 'DEMO' : 'HERMES · SOLO LECTURA'}
               </span>
             </div>
             <p className="text-xs text-[#94A3B8]">
@@ -150,18 +152,19 @@ export const TareasScreen: React.FC = () => {
 
           <button
             id="btn-create-task-modal"
-            onClick={() => openModal('newTask')}
+            onClick={() => appMode === 'demo' && openModal('newTask')}
+            disabled={appMode !== 'demo'}
             className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-blue-950/40 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Crear Tarea</span>
+            <span>{appMode === 'demo' ? 'Crear Tarea' : 'Solo lectura'}</span>
           </button>
         </div>
       </div>
 
       {/* Main Area: Kanban Columns or List View */}
       {viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3.5 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3.5 items-start">
           {columns.map(col => {
             const colTasks = filteredTasks.filter(t => t.status === col.id);
 
@@ -325,7 +328,7 @@ export const TareasScreen: React.FC = () => {
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#0A141D] border border-blue-500/30 text-blue-400">
                   {activeTask.code}
                 </span>
-                <span className="text-xs text-[#64748B]">Proyecto: {projects.find(p => p.id === activeTask.projectId)?.name || 'General'}</span>
+                <span className="text-xs text-[#64748B]">Tablero: {activeTask.hermesBoard || projects.find(p => p.id === activeTask.projectId)?.name || 'General'}</span>
               </div>
               <h3 className="text-base md:text-lg font-bold text-white">{activeTask.title}</h3>
               <p className="text-xs text-[#94A3B8] mt-0.5">
@@ -340,6 +343,7 @@ export const TareasScreen: React.FC = () => {
                 <button
                   key={c.id}
                   onClick={() => handleStatusChange(activeTask.id, c.id)}
+                  disabled={appMode !== 'demo'}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                     activeTask.status === c.id
                       ? 'bg-blue-600 text-white font-bold shadow'
@@ -414,15 +418,17 @@ export const TareasScreen: React.FC = () => {
               <input
                 type="text"
                 value={commentInput}
+                disabled={appMode !== 'demo'}
                 onChange={e => setCommentInput(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleAddComment();
                 }}
-                placeholder="Escribe una instrucción de corrección o ajuste para el agente..."
+                placeholder={appMode === 'demo' ? 'Escribe una instrucción de corrección o ajuste para el agente...' : 'Comentarios deshabilitados durante la fase read-only'}
                 className="flex-1 px-3.5 py-2 rounded-lg bg-[#0A141D] border border-[#1E293B] text-xs text-[#E0E7FF] focus:outline-none focus:border-blue-500 placeholder:text-[#64748B]"
               />
               <button
                 onClick={handleAddComment}
+                disabled={appMode !== 'demo'}
                 className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />

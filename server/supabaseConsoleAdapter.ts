@@ -104,6 +104,13 @@ export class SupabaseConsoleAdapter {
     });
   }
 
+  listTaskExtensions(limit = 500) {
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 500);
+    return this.call('GET', 'task_extensions', {
+      query: { select: '*', order: 'updated_at.desc', limit: String(safeLimit) }
+    });
+  }
+
   getTaskExtension(board: string, taskId: string) {
     return this.call('GET', 'task_extensions', {
       query: {

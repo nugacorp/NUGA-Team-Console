@@ -283,6 +283,9 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   app.get(`${API_PREFIX}/console/task-extensions/:board/:taskId`, requireSession, (request, response) =>
     consoleOperation(() => supabaseAdapter!.getTaskExtension(request.params.board, request.params.taskId))(request, response)
   );
+  app.get(`${API_PREFIX}/console/task-extensions`, requireSession,
+    consoleOperation(() => supabaseAdapter!.listTaskExtensions())
+  );
   app.put(`${API_PREFIX}/console/task-extensions/:board/:taskId`, requireSession, requireCsrf, (request, response) =>
     consoleOperation(() => supabaseAdapter!.upsertTaskExtension({
       ...(request.body as Record<string, unknown>),

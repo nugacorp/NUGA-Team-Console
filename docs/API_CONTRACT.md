@@ -154,6 +154,12 @@ extensiones de consola o no disponibles. La matriz normativa está en
 
 ## 10. Adaptador Hermes read-only
 
+`GET /api/v1/hermes/tasks` devuelve las tareas sanitizadas de todos los tableros
+permitidos. `GET /api/v1/console/task-extensions` devuelve en una sola lectura
+las extensiones de interfaz propiedad de NUGA Console (plazo, estimación y plan).
+El frontend combina ambos contratos por `board + task id`; Hermes continúa
+siendo la fuente canónica de la tarea y Supabase no duplica su contenido.
+
 El adaptador usa exclusivamente comandos oficiales `hermes kanban ... --json`
 con binario, tableros, timeout y límite de resultados configurados en servidor.
 No invoca gateway, `serve`, agentes, RouterOS ni subcomandos mutables.

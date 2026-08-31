@@ -28,6 +28,18 @@ describe('Supabase server-only console adapter', () => {
     expect(headers.authorization).toBeUndefined();
   });
 
+  it('lists task extensions in one bounded server-side request', async () => {
+    const request = vi.fn<SupabaseFetch>(async () =>
+      new Response('[]', { status: 200 })
+    );
+
+    await adapterWith(request).listTaskExtensions();
+
+    const [url] = request.mock.calls[0];
+    expect(String(url)).toContain('/rest/v1/task_extensions');
+    expect(String(url)).toContain('limit=500');
+  });
+
   it('never offers update or delete operations for audit events', () => {
     const adapter = adapterWith(vi.fn<SupabaseFetch>());
     expect('update' in adapter).toBe(false);
