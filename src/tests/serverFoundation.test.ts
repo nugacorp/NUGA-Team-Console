@@ -24,7 +24,10 @@ function testConfig(): ServerConfig {
     ownerPasswordHash: TEST_HASH,
     hermesReadOnlyEnabled: false,
     hermesBinary: '/test/hermes',
-    hermesBoards: []
+    hermesBoards: [],
+    supabaseEnabled: false,
+    supabaseUrl: '',
+    supabaseSecretKey: ''
   };
 }
 

@@ -23,6 +23,7 @@ import {
   validateModeHeader
 } from './contracts';
 import { HermesReadOnlyAdapter, HermesReadOnlyError } from './hermesReadOnlyAdapter';
+import { SupabaseConsoleAdapter, SupabaseConsoleError } from './supabaseConsoleAdapter';
 
 const API_PREFIX = '/api/v1';
 
@@ -32,6 +33,7 @@ function getSession(response: Response): AuthSession | null {
 
 export interface AppDependencies {
   hermesAdapter?: HermesReadOnlyAdapter;
+  supabaseAdapter?: SupabaseConsoleAdapter;
 }
 
 export function createApp(config: ServerConfig, dependencies: AppDependencies = {}) {
@@ -44,6 +46,16 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
           boards: config.hermesBoards,
           timeoutMs: 8_000,
           maxTasks: 500
+        })
+      : null
+  );
+  const supabaseAdapter = dependencies.supabaseAdapter ?? (
+    config.supabaseEnabled
+      ? new SupabaseConsoleAdapter({
+          url: config.supabaseUrl,
+          secretKey: config.supabaseSecretKey,
+          timeoutMs: 8_000,
+          maxResponseBytes: 1_048_576
         })
       : null
   );
@@ -243,8 +255,53 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   app.get(`${API_PREFIX}/tasks`, requireSession, hermesUnavailable);
   app.get(`${API_PREFIX}/tasks/:id`, requireSession, hermesUnavailable);
   app.get(`${API_PREFIX}/tasks/:id/runs`, requireSession, hermesUnavailable);
-  app.get(`${API_PREFIX}/deliverables`, requireSession, hermesUnavailable);
-  app.get(`${API_PREFIX}/audit/events`, requireSession, hermesUnavailable);
+  const consoleUnavailable = (_request: Request, response: Response) => {
+    response.status(503).json(
+      apiError('SUPABASE_NOT_CONNECTED', 'Supabase aún no está conectado a NUGA Console API.')
+    );
+  };
+  const consoleOperation = (
+    operation: () => Promise<unknown>
+  ) => async (_request: Request, response: Response) => {
+    if (!supabaseAdapter) {
+      consoleUnavailable(_request, response);
+      return;
+    }
+    try {
+      response.status(200).json(await operation());
+    } catch (error) {
+      const denied = error instanceof SupabaseConsoleError && error.code === 'DENIED';
+      response.status(denied ? 400 : 503).json(
+        apiError(
+          denied ? 'VALIDATION_ERROR' : 'SUPABASE_UNAVAILABLE',
+          denied ? 'El identificador solicitado no es válido.' : 'La persistencia de NUGA Console no está disponible.'
+        )
+      );
+    }
+  };
+
+  app.get(`${API_PREFIX}/console/task-extensions/:board/:taskId`, requireSession, (request, response) =>
+    consoleOperation(() => supabaseAdapter!.getTaskExtension(request.params.board, request.params.taskId))(request, response)
+  );
+  app.put(`${API_PREFIX}/console/task-extensions/:board/:taskId`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(() => supabaseAdapter!.upsertTaskExtension({
+      ...(request.body as Record<string, unknown>),
+      hermes_board_slug: request.params.board,
+      hermes_task_id: request.params.taskId
+    }))(request, response)
+  );
+  app.get(`${API_PREFIX}/decisions`, requireSession, consoleOperation(() => supabaseAdapter!.list('decisions')));
+  app.post(`${API_PREFIX}/decisions`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(() => supabaseAdapter!.create('decisions', request.body as Record<string, unknown>))(request, response)
+  );
+  app.get(`${API_PREFIX}/deliverables`, requireSession, consoleOperation(() => supabaseAdapter!.list('deliverables')));
+  app.post(`${API_PREFIX}/deliverables`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(() => supabaseAdapter!.create('deliverables', request.body as Record<string, unknown>))(request, response)
+  );
+  app.get(`${API_PREFIX}/audit/events`, requireSession, consoleOperation(() => supabaseAdapter!.list('audit_events')));
+  app.post(`${API_PREFIX}/audit/events`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(() => supabaseAdapter!.create('audit_events', request.body as Record<string, unknown>))(request, response)
+  );
 
   app.use(API_PREFIX, (_request, response) => {
     response.status(404).json(

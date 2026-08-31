@@ -49,3 +49,22 @@ claves foráneas ni copias editables del Kanban.
    NUGA Console API continúa respondiendo sin persistencia Supabase.
 
 Production, Realtime, Storage y Supabase Auth permanecen fuera de alcance.
+
+## Adaptador de backend
+
+NUGA Console API usa el Data API únicamente desde el servidor y envía una clave
+moderna `sb_secret_` en el encabezado `apikey`; no usa `Authorization: Bearer`
+porque las claves modernas no son JWT. La integración permanece deshabilitada
+salvo que existan simultáneamente `NUGA_SUPABASE_ENABLED=true`, una URL HTTPS y
+la clave privada en el entorno del servicio.
+
+`nuga_console_backend_access.sql` concede a `service_role` lectura, inserción y
+actualización sobre extensiones, decisiones y entregables. Auditoría permite
+solamente lectura e inserción. Ninguna tabla concede `DELETE` o `TRUNCATE`, y los
+roles `anon` y `authenticated` continúan sin permisos.
+
+Antes de habilitar el adaptador, `nuga_console` debe agregarse manualmente a
+**Project Settings > Data API > Exposed schemas**. Exponer el esquema no concede
+permisos por sí mismo; los GRANT y RLS continúan aplicando. No se modifica
+`pgrst.db_schemas` mediante SQL para conservar la configuración administrada por
+el Dashboard.
