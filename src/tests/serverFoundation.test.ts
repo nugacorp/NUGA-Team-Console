@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { AddressInfo } from 'node:net';
-import { createApp } from '../../server/app';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { AppDependencies, createApp } from '../../server/app';
 import { createPasswordHash } from '../../server/auth';
 import {
   ServerConfigurationError,
@@ -12,6 +15,7 @@ import {
 const TEST_PASSWORD = 'correct-horse-battery-staging';
 const TEST_HASH = createPasswordHash(TEST_PASSWORD, Buffer.alloc(16, 7));
 const activeServers: Array<ReturnType<ReturnType<typeof createApp>['listen']>> = [];
+const temporaryDirectories: string[] = [];
 
 function testConfig(): ServerConfig {
   return {
@@ -31,8 +35,8 @@ function testConfig(): ServerConfig {
   };
 }
 
-async function startTestServer() {
-  const server = createApp(testConfig()).listen(0, '127.0.0.1');
+async function startTestServer(dependencies: AppDependencies = {}) {
+  const server = createApp(testConfig(), dependencies).listen(0, '127.0.0.1');
   activeServers.push(server);
 
   await new Promise<void>((resolve, reject) => {
@@ -65,6 +69,9 @@ afterEach(async () => {
         })
     )
   );
+  temporaryDirectories.splice(0).forEach(directory => {
+    rmSync(directory, { recursive: true, force: true });
+  });
 });
 
 describe('NUGA Console API staging foundation', () => {
@@ -204,5 +211,33 @@ describe('NUGA Console API staging foundation', () => {
     });
     expect(accepted.status).toBe(204);
     expect(accepted.headers.get('set-cookie')).toContain('Max-Age=0');
+  });
+
+  it('serves the staging frontend and keeps API failures as JSON', async () => {
+    const frontendDirectory = mkdtempSync(join(tmpdir(), 'nuga-frontend-'));
+    temporaryDirectories.push(frontendDirectory);
+    mkdirSync(join(frontendDirectory, 'assets'));
+    writeFileSync(join(frontendDirectory, 'index.html'), '<!doctype html><title>NUGA staging</title>');
+    writeFileSync(join(frontendDirectory, 'assets', 'app.js'), 'globalThis.__NUGA__ = true;');
+
+    const baseUrl = await startTestServer({ frontendDirectory });
+    const root = await fetch(`${baseUrl}/`);
+    const spa = await fetch(`${baseUrl}/tareas`);
+    const asset = await fetch(`${baseUrl}/assets/app.js`);
+    const missingApi = await fetch(`${baseUrl}/api/v1/not-real`, {
+      headers: { 'x-nuga-mode': 'staging' }
+    });
+
+    expect(root.status).toBe(200);
+    expect(await root.text()).toContain('NUGA staging');
+    expect(root.headers.get('content-security-policy')).toContain("connect-src 'self'");
+    expect(root.headers.get('x-frame-options')).toBe('DENY');
+    expect(spa.status).toBe(200);
+    expect(await spa.text()).toContain('NUGA staging');
+    expect(asset.status).toBe(200);
+    expect(await asset.text()).toContain('__NUGA__');
+    expect(missingApi.status).toBe(404);
+    expect(missingApi.headers.get('content-type')).toContain('application/json');
+    expect(await missingApi.json()).toMatchObject({ error: { code: 'NOT_FOUND' } });
   });
 });

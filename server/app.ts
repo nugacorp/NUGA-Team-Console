@@ -4,6 +4,8 @@ import express, {
   Response
 } from 'express';
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import {
   AuthSession,
   createSessionToken,
@@ -34,10 +36,14 @@ function getSession(response: Response): AuthSession | null {
 export interface AppDependencies {
   hermesAdapter?: HermesReadOnlyAdapter;
   supabaseAdapter?: SupabaseConsoleAdapter;
+  frontendDirectory?: string | null;
 }
 
 export function createApp(config: ServerConfig, dependencies: AppDependencies = {}) {
   const app = express();
+  const frontendDirectory = dependencies.frontendDirectory === undefined
+    ? resolve(process.cwd(), 'dist')
+    : dependencies.frontendDirectory;
   const secureCookies = config.publicOrigin.startsWith('https://');
   const hermesAdapter = dependencies.hermesAdapter ?? (
     config.hermesReadOnlyEnabled
@@ -311,6 +317,40 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
       apiError('NOT_FOUND', 'Ruta API no encontrada.')
     );
   });
+
+  app.use('/api', (_request, response) => {
+    response.status(404).json(
+      apiError('NOT_FOUND', 'Ruta API no encontrada.')
+    );
+  });
+
+  if (frontendDirectory && existsSync(join(frontendDirectory, 'index.html'))) {
+    app.use((_request, response, next) => {
+      response.setHeader('content-security-policy', [
+        "default-src 'self'",
+        "base-uri 'none'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "object-src 'none'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob: https:",
+        "connect-src 'self'"
+      ].join('; '));
+      response.setHeader('referrer-policy', 'no-referrer');
+      response.setHeader('x-content-type-options', 'nosniff');
+      response.setHeader('x-frame-options', 'DENY');
+      next();
+    });
+    app.use(express.static(frontendDirectory, {
+      dotfiles: 'deny',
+      fallthrough: true,
+      index: false
+    }));
+    app.get('*', (_request, response) => {
+      response.sendFile(join(frontendDirectory, 'index.html'));
+    });
+  }
 
   app.use(
     (
