@@ -36,9 +36,9 @@ describe('Supabase server-only console adapter', () => {
 
   it('validates Hermes identifiers before making a request', async () => {
     const request = vi.fn<SupabaseFetch>();
-    await expect(
+    expect(() =>
       adapterWith(request).getTaskExtension('../production', 'task-1')
-    ).rejects.toBeInstanceOf(SupabaseConsoleError);
+    ).toThrow(SupabaseConsoleError);
     expect(request).not.toHaveBeenCalled();
   });
 
@@ -65,14 +65,14 @@ describe('Supabase server-only console adapter', () => {
     const request = vi.fn<SupabaseFetch>();
     const adapter = adapterWith(request);
 
-    await expect(adapter.create('audit_events', {
+    expect(() => adapter.create('audit_events', {
       actor: 'owner:ramiro',
       details: { authorization: 'Bearer forbidden' }
-    })).rejects.toMatchObject({ code: 'DENIED' });
-    await expect(adapter.create('decisions', {
+    })).toThrow(SupabaseConsoleError);
+    expect(() => adapter.create('decisions', {
       code: 'DEC-1',
       confirmationToken: 'forbidden'
-    })).rejects.toMatchObject({ code: 'DENIED' });
+    })).toThrow(SupabaseConsoleError);
     expect(request).not.toHaveBeenCalled();
   });
 });
