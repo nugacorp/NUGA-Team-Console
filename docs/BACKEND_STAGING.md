@@ -1,5 +1,16 @@
 # Backend staging de NUGA Team Console
 
+## Frontend en el mismo origen
+
+Después de ejecutar `VITE_APP_MODE=staging VITE_NUGA_API_URL=/api npm run build`,
+NUGA Console API sirve `dist/` desde el mismo host y puerto que `/api/v1`.
+Esto evita CORS y conserva la cookie HttpOnly como same-origin. El servicio sigue
+escuchando únicamente en `127.0.0.1:8787`; durante laboratorio se accede mediante
+un túnel SSH local, sin publicar el puerto en la LAN o Internet.
+
+`NUGA_PUBLIC_ORIGIN` debe coincidir con el origen usado por el navegador. Para el
+túnel local canónico es `http://127.0.0.1:8787`.
+
 ## Estado actual
 
 El repositorio contiene una base de NUGA Console API construida con Express, ya
