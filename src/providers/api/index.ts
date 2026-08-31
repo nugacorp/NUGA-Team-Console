@@ -48,6 +48,14 @@ import {
   parseServerStatusContract,
   toDecisionActionRequest
 } from './contracts';
+import {
+  HermesTaskExtension,
+  mapAuditEvent,
+  mapDecision,
+  mapDeliverable,
+  mappedResult,
+  mapHermesTask
+} from './mappers';
 
 export class ApiError extends Error {
   constructor(
@@ -199,7 +207,36 @@ export class ApiTasksProvider implements TasksProvider {
   constructor(private readonly client: HttpClient) {}
 
   async getTasks(): Promise<ProviderResult<Task[]>> {
-    return this.client.request<Task[]>('/api/v1/tasks');
+    const tasksResult = await this.client.request<unknown>('/api/v1/hermes/tasks');
+    if (tasksResult.status !== 'success') return tasksResult as ProviderResult<Task[]>;
+    if (!Array.isArray(tasksResult.data)) {
+      return { status: 'error', error: 'Hermes devolvió una lista de tareas inválida.', isDemo: false };
+    }
+    const extensionsResult = await this.client.request<unknown>('/api/v1/console/task-extensions');
+    const extensions = extensionsResult.status === 'success' && Array.isArray(extensionsResult.data)
+      ? extensionsResult.data.filter((value): value is HermesTaskExtension => {
+          if (!value || typeof value !== 'object') return false;
+          const candidate = value as Partial<HermesTaskExtension>;
+          return typeof candidate.hermes_board_slug === 'string'
+            && typeof candidate.hermes_task_id === 'string';
+        })
+      : [];
+    const byTask = new Map(
+      extensions.map(extension => [
+        `${extension.hermes_board_slug}:${extension.hermes_task_id}`,
+        extension
+      ])
+    );
+    const mapped = tasksResult.data.map(value => {
+      if (!value || typeof value !== 'object') return null;
+      const task = value as { id?: unknown; board?: unknown };
+      const key = `${String(task.board ?? '')}:${String(task.id ?? '')}`;
+      return mapHermesTask(value, byTask.get(key));
+    });
+    if (mapped.some(task => task === null)) {
+      return { status: 'error', error: 'Hermes devolvió una tarea incompleta.', isDemo: false };
+    }
+    return { ...tasksResult, data: mapped as Task[] };
   }
 
   async getTaskById(id: string): Promise<ProviderResult<Task | null>> {
@@ -236,7 +273,10 @@ export class ApiDecisionsProvider implements DecisionsProvider {
   constructor(private readonly client: HttpClient) {}
 
   async getDecisions(): Promise<ProviderResult<Decision[]>> {
-    return this.client.request<Decision[]>('/api/v1/decisions');
+    return mappedResult(
+      await this.client.request<unknown>('/api/v1/decisions'),
+      mapDecision
+    );
   }
 
   async getDecisionById(id: string): Promise<ProviderResult<Decision | null>> {
@@ -457,7 +497,10 @@ export class ApiDeliverablesProvider implements DeliverablesProvider {
   constructor(private readonly client: HttpClient) {}
 
   async getDeliverables(): Promise<ProviderResult<Deliverable[]>> {
-    return this.client.request<Deliverable[]>('/api/v1/deliverables');
+    return mappedResult(
+      await this.client.request<unknown>('/api/v1/deliverables'),
+      mapDeliverable
+    );
   }
 
   async getDeliverableById(id: string): Promise<ProviderResult<Deliverable | null>> {
@@ -476,7 +519,10 @@ export class ApiAuditProvider implements AuditProvider {
   constructor(private readonly client: HttpClient) {}
 
   async getAuditEvents(): Promise<ProviderResult<AuditEvent[]>> {
-    return this.client.request<AuditEvent[]>('/api/v1/audit/events');
+    return mappedResult(
+      await this.client.request<unknown>('/api/v1/audit/events'),
+      mapAuditEvent
+    );
   }
 
   async logAuditEvent(payload: AuditRecordPayload): Promise<ProviderResult<AuditEvent>> {

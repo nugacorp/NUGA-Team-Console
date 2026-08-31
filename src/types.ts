@@ -143,6 +143,9 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   deadline: string;
+  /** Tablero canónico de origen cuando la tarea procede de Hermes. */
+  hermesBoard?: string;
+  dataSource?: 'local_demo' | 'hermes';
   isDemo?: boolean;
 }
 

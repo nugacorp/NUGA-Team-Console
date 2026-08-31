@@ -3,6 +3,7 @@ import { DEFAULT_MODE_CAPABILITIES } from '../config/appConfig';
 import { createProviders } from '../providers';
 import {
   ApiDecisionsProvider,
+  ApiTasksProvider,
   HttpClient
 } from '../providers/api';
 import {
@@ -57,6 +58,64 @@ describe('NUGA API v1 staging boundary', () => {
         })
       })
     );
+  });
+
+  it('maps Hermes tasks and Supabase extensions into the visual task contract', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify([{
+        id: 'task-9',
+        board: 'nuga-team-lab',
+        title: 'Validar integración',
+        body: 'Comprobar el contrato real',
+        assignee: 'nugacore',
+        status: 'ready',
+        priority: 2,
+        createdAt: 1_788_000_000,
+        source: 'hermes'
+      }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{
+        hermes_board_slug: 'nuga-team-lab',
+        hermes_task_id: 'task-9',
+        deadline: '2026-09-01T00:00:00Z',
+        estimated_minutes: 90,
+        plan: ['Validar CI']
+      }]), { status: 200 }));
+
+    const provider = new ApiTasksProvider(
+      new HttpClient({ baseUrl: '/api', mode: 'staging' })
+    );
+    const result = await provider.getTasks();
+
+    expect(result.status).toBe('success');
+    expect(result.data?.[0]).toMatchObject({
+      id: 'nuga-team-lab:task-9',
+      projectId: 'nuga-team-lab',
+      hermesBoard: 'nuga-team-lab',
+      assignedAgent: 'nugacore',
+      priority: 'alta',
+      status: 'ready',
+      estimatedHours: 1.5,
+      deadline: '2026-09-01T00:00:00Z',
+      plan: ['Validar CI'],
+      dataSource: 'hermes',
+      isDemo: false
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy.mock.calls[0][0]).toBe('/api/v1/hermes/tasks');
+    expect(fetchSpy.mock.calls[1][0]).toBe('/api/v1/console/task-extensions');
+  });
+
+  it('fails closed instead of rendering malformed Hermes tasks', async () => {
+    vi.spyOn(window, 'fetch')
+      .mockResolvedValueOnce(new Response('[{"id":"missing-contract"}]', { status: 200 }))
+      .mockResolvedValueOnce(new Response('[]', { status: 200 }));
+
+    const result = await new ApiTasksProvider(
+      new HttpClient({ baseUrl: '/api', mode: 'staging' })
+    ).getTasks();
+
+    expect(result.status).toBe('error');
+    expect(result.data).toBeUndefined();
   });
 
   it('never includes the typed confirmation phrase in a remote decision payload', async () => {
