@@ -37,10 +37,14 @@ export async function checkServerHealth(
   }
 
   try {
+    const normalizedApiUrl = apiUrl.replace(/\/$/, '');
+    const statusPath = normalizedApiUrl.endsWith('/api')
+      ? '/v1/status'
+      : '/api/v1/status';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
 
-    const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/v1/status`, {
+    const res = await fetch(`${normalizedApiUrl}${statusPath}`, {
       signal: controller.signal,
       credentials: 'include',
       cache: 'no-store',

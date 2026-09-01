@@ -216,6 +216,25 @@ describe('Architecture of Interchangeable Modes (demo, staging, production)', ()
       expect(health.serverContract.mode).toBe('demo');
       expect(health.serverContract.hermes).toBe('not_connected');
     });
+
+    it('normalizes the canonical /api base without duplicating the path', async () => {
+      const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          mode: 'production',
+          source: 'server',
+          hermes: 'available',
+          writesEnabled: true,
+          integrations: { nugacore: false, mikromcp: false, google: false }
+        })
+      } as Response);
+
+      const health = await checkServerHealth('production', '/api');
+
+      expect(fetchSpy).toHaveBeenCalledWith('/api/v1/status', expect.any(Object));
+      expect(health.status).toBe('ok');
+      expect(health.serverContract.hermes).toBe('available');
+    });
   });
 
   describe('8. Zero Secret & Credential Persistence in DEMO Decisions', () => {

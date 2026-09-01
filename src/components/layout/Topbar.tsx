@@ -58,6 +58,7 @@ export const Topbar: React.FC = () => {
   const isDemo = appMode === 'demo';
   const isStaging = appMode === 'staging';
   const isProduction = appMode === 'production';
+  const modeLabel = isProduction ? 'PROD' : isStaging ? 'STAGING' : 'DEMO';
 
   const effectiveHermesStatus = isDemo ? demoHermesStatus : (serverStatus?.hermes === 'available' ? 'Disponible' : serverStatus?.hermes === 'degraded' ? 'Atención requerida' : 'No conectado');
 
@@ -73,7 +74,7 @@ export const Topbar: React.FC = () => {
     marketing: { title: 'Marketing & Biblioteca Multimedia', subtitle: 'Campañas, videos, storyboards y generador de prompts' },
     administracion: { title: 'Operaciones Administrativas', subtitle: 'Minutas, acuerdos, cotizaciones y seguimiento de control' },
     entregables: { title: 'Entregables & Documentos', subtitle: 'Visor ejecutivo y evidencia técnica de informes' },
-    auditoria: { title: 'Bitácora de Auditoría', subtitle: 'Bitácora DEMO local. En producción requerirá almacenamiento append-only, integridad verificable y control de acceso en backend.' },
+    auditoria: { title: 'Bitácora de Auditoría', subtitle: isDemo ? 'Bitácora DEMO local.' : 'Trazabilidad persistida por NUGA Console API con control de acceso.' },
     configuracion: { title: 'Configuración de la Consola', subtitle: 'Modelos, políticas de seguridad, MCP y sandbox' }
   };
 
@@ -299,11 +300,11 @@ export const Topbar: React.FC = () => {
           id="quick-active-tasks-btn"
           onClick={() => setCurrentScreen('tareas')}
           className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#111D27] hover:bg-[#1E293B] border border-[#1E293B] text-xs text-[#E0E7FF] transition-colors cursor-pointer"
-          title={`${activeTasksCount} tareas activas en entorno DEMO`}
+          title={`${activeTasksCount} tareas activas en entorno ${modeLabel}`}
         >
           <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
           <span className="font-mono font-bold text-blue-400">{activeTasksCount}</span>
-          <span className="text-[#94A3B8] text-[11px]">tareas · DEMO</span>
+          <span className="text-[#94A3B8] text-[11px]">tareas · {modeLabel}</span>
         </button>
 
         {/* Quick KPI: Pending decisions */}
@@ -312,12 +313,12 @@ export const Topbar: React.FC = () => {
             id="quick-pending-decisions-btn"
             onClick={() => setCurrentScreen('decisiones')}
             className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg bg-orange-400/15 hover:bg-orange-400/25 border border-orange-500/30 text-xs text-orange-400 font-bold transition-colors animate-pulse cursor-pointer"
-            title={`${pendingDecisionsCount} decisiones pendientes · DEMO`}
+            title={`${pendingDecisionsCount} decisiones pendientes · ${modeLabel}`}
           >
             <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
             <span>{pendingDecisionsCount}</span>
             <span className="hidden sm:inline text-[10px] px-1 bg-orange-500 text-black rounded font-extrabold uppercase">
-              {criticalDecisionsCount > 0 ? 'Riesgo crítico' : 'Urgente'} · DEMO
+              {criticalDecisionsCount > 0 ? 'Riesgo crítico' : 'Urgente'} · {modeLabel}
             </span>
           </button>
         )}
@@ -455,11 +456,10 @@ export const Topbar: React.FC = () => {
                   className="w-full px-4 py-2 text-left text-xs text-[#E0E7FF] hover:bg-[#0A141D] flex items-center gap-2.5 cursor-pointer"
                 >
                   <Activity className="w-3.5 h-3.5 text-[#64748B]" />
-                  <span>Bitácora de Auditoría DEMO</span>
+                  <span>Bitácora de Auditoría {modeLabel}</span>
                 </button>
 
-                {/* Restablecer Datos DEMO */}
-                <button
+                {isDemo && <button
                   onClick={() => {
                     resetAllDemoData();
                     setIsUserMenuOpen(false);
@@ -468,7 +468,7 @@ export const Topbar: React.FC = () => {
                 >
                   <RefreshCcw className="w-3.5 h-3.5" />
                   <span>Restablecer Datos DEMO</span>
-                </button>
+                </button>}
 
                 {/* Cerrar Sesión DEMO */}
                 <div className="pt-1 mt-1 border-t border-[#1E293B]">
@@ -477,7 +477,7 @@ export const Topbar: React.FC = () => {
                     className="w-full px-4 py-2 text-left text-xs text-rose-400 hover:bg-[#0A141D] flex items-center gap-2.5 cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Cerrar Sesión DEMO</span>
+                    <span>{isDemo ? 'Cerrar Sesión DEMO' : 'Cerrar sesión segura'}</span>
                   </button>
                 </div>
               </div>

@@ -28,6 +28,8 @@ export const ResumenEjecutivoScreen: React.FC = () => {
     incidents,
     agents,
     auditEvents,
+    appMode,
+    serverStatus,
     setCurrentScreen,
     setSelectedDecisionId,
     setSelectedTaskId,
@@ -39,6 +41,14 @@ export const ResumenEjecutivoScreen: React.FC = () => {
   const criticalDecisions = pendingDecisions.filter(d => d.risk === 'critical');
   const activeTasks = tasks.filter(t => t.status === 'in_progress' || t.status === 'review');
   const totalClients = towers.reduce((acc, t) => acc + t.connectedClients, 0);
+  const isDemo = appMode === 'demo';
+  const modeLabel = appMode === 'production' ? 'PROD' : appMode.toUpperCase();
+  const hermesAvailable = serverStatus?.hermes === 'available';
+  const environmentNotice = isDemo
+    ? APP_INFO.demoNotice
+    : appMode === 'production'
+      ? 'Datos operativos obtenidos mediante NUGA Console API. Hermes está limitado a lectura y MikroTik permanece desconectado.'
+      : 'Entorno de laboratorio conectado mediante NUGA Console API. Las operaciones externas permanecen restringidas.';
 
   const getAgentLetter = (role: string) => {
     switch (role) {
@@ -64,13 +74,13 @@ export const ResumenEjecutivoScreen: React.FC = () => {
 
   return (
     <div id="screen-resumen" className="space-y-4 pb-20 animate-in fade-in duration-200">
-      {/* Top Banner: DEMO Mode Notice */}
+      {/* Effective environment notice */}
       <div className="flex items-center justify-between p-3 rounded-xl bg-[#111D27] border border-[#1E293B] text-xs text-[#94A3B8] gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className="px-2 py-0.5 rounded bg-orange-500/10 border border-orange-500/20 text-[10px] font-mono font-bold text-orange-400 shrink-0">
-            DEMO
+            {modeLabel}
           </span>
-          <span className="truncate">{APP_INFO.demoNotice}</span>
+          <span className="truncate">{environmentNotice}</span>
         </div>
         <span className="text-[11px] font-mono text-[#CBD5E1] hidden sm:inline shrink-0 font-medium">
           {TEAM_PROFILES_LABEL}
@@ -84,9 +94,11 @@ export const ResumenEjecutivoScreen: React.FC = () => {
           <div>
             <p className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold mb-1">Estado General</p>
             <p className="text-xl font-bold text-green-500 tracking-tight flex items-center gap-1.5">
-              OPERATIVO <span className="text-xs font-mono font-normal text-green-400/80">· DEMO</span>
+              OPERATIVO <span className="text-xs font-mono font-normal text-green-400/80">· {modeLabel}</span>
             </p>
-            <p className="text-[10px] text-[#94A3B8] mt-0.5 font-mono">5 perfiles · Simulación local</p>
+            <p className="text-[10px] text-[#94A3B8] mt-0.5 font-mono">
+              {isDemo ? '5 perfiles · Simulación local' : `Hermes · ${hermesAvailable ? 'Lectura disponible' : 'No disponible'}`}
+            </p>
           </div>
           <div className="w-12 h-12 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center text-green-500 text-xl font-bold">
             ✓
@@ -101,13 +113,13 @@ export const ResumenEjecutivoScreen: React.FC = () => {
           <div>
             <p className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold mb-1">Clientes Activos</p>
             <p className="text-2xl font-mono font-bold text-white tracking-tight">
-              {totalClients} <span className="text-xs font-mono font-normal text-[#94A3B8]">· DEMO</span>
+              {totalClients} <span className="text-xs font-mono font-normal text-[#94A3B8]">· {modeLabel}</span>
             </p>
             <p className="text-[10px] text-[#94A3B8] mt-0.5">{towers.length} Torres · {routers.length} Routers</p>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
-              +4 hoy · DEMO
+              {isDemo ? '+4 hoy · DEMO' : 'MIKROTIK DESCONECTADO'}
             </span>
             <p className="text-[10px] text-[#64748B] mt-1">WISP Local</p>
           </div>
@@ -121,9 +133,9 @@ export const ResumenEjecutivoScreen: React.FC = () => {
           <div>
             <p className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold mb-1">Tareas Activas</p>
             <p className="text-2xl font-mono font-bold text-blue-400 tracking-tight">
-              {activeTasks.length} <span className="text-xs font-mono font-normal text-[#94A3B8]">· DEMO</span>
+              {activeTasks.length} <span className="text-xs font-mono font-normal text-[#94A3B8]">· {modeLabel}</span>
             </p>
-            <p className="text-[10px] text-[#94A3B8] mt-0.5">En progreso / revisión</p>
+            <p className="text-[10px] text-[#94A3B8] mt-0.5">{tasks.length} totales · En progreso / revisión</p>
           </div>
           <div className="flex -space-x-2">
             {agents.map(a => (
@@ -147,15 +159,15 @@ export const ResumenEjecutivoScreen: React.FC = () => {
           <div>
             <p className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold mb-1">Decisiones</p>
             <p className="text-2xl font-mono font-bold text-orange-400 tracking-tight">
-              {pendingDecisions.length} <span className="text-xs font-mono font-normal text-[#94A3B8]">· DEMO</span>
+              {pendingDecisions.length} <span className="text-xs font-mono font-normal text-[#94A3B8]">· {modeLabel}</span>
             </p>
             <p className="text-[10px] text-[#94A3B8] mt-0.5">
-              {criticalDecisions.length > 0 ? `${criticalDecisions.length} críticas · DEMO` : 'Evaluación requerida'}
+              {criticalDecisions.length > 0 ? `${criticalDecisions.length} críticas · ${modeLabel}` : 'Sin decisiones pendientes'}
             </p>
           </div>
           <div className="px-2 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] font-bold rounded flex items-center gap-1">
             <AlertTriangle className="w-3 h-3 text-orange-400" />
-            URGENTE · DEMO
+            {pendingDecisions.length > 0 ? `URGENTE · ${modeLabel}` : `AL DÍA · ${modeLabel}`}
           </div>
         </div>
       </div>
@@ -174,7 +186,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
               onClick={() => setCurrentScreen('decisiones')}
               className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
             >
-              Ver todas ({decisions.length} · DEMO)
+              Ver todas ({decisions.length} · {modeLabel})
             </button>
           </div>
 
@@ -209,7 +221,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
 
                   <div className="text-right px-2 hidden sm:block shrink-0">
                     <p className={`text-[10px] font-bold ${isCrit ? 'text-rose-400' : isHigh ? 'text-orange-400' : 'text-blue-400'}`}>
-                      {riskLabel} · DEMO
+                      {riskLabel} · {modeLabel}
                     </p>
                     <p className="text-[10px] text-[#64748B] truncate max-w-[140px]">{decision.affectedScope}</p>
                   </div>
@@ -264,7 +276,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
                       <span className="font-bold text-[#E0E7FF] truncate">{agent.name}</span>
                       <span className="text-[10px] text-green-400 font-mono flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                        Activo · DEMO
+                        {hermesAvailable ? `Disponible · ${modeLabel}` : `Sin conexión · ${modeLabel}`}
                       </span>
                     </div>
                     <div className="w-full bg-[#1E293B] h-1.5 rounded-full mt-1 overflow-hidden">
@@ -288,7 +300,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
               <Radio className="w-4 h-4 text-emerald-400" />
               <span>Red WISP</span>
               <span className="text-[10px] font-semibold bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded">
-                99.4% Uptime · DEMO
+                {isDemo ? '99.4% Uptime · DEMO' : 'MIKROTIK DESCONECTADO'}
               </span>
             </h3>
             <button
@@ -307,7 +319,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
                   <span className={`text-base font-bold ${tower.status === 'online' ? 'text-green-400' : 'text-amber-400'}`}>
                     {tower.status === 'online' ? 'OK' : 'WARN'}
                   </span>
-                  <span className="text-[10px] text-blue-400 font-mono">{tower.connectedClients} Clientes · DEMO</span>
+                  <span className="text-[10px] text-blue-400 font-mono">{tower.connectedClients} Clientes · {modeLabel}</span>
                 </div>
                 {/* Micro sparkline bar */}
                 <div className="flex gap-1 mt-2">
@@ -340,7 +352,7 @@ export const ResumenEjecutivoScreen: React.FC = () => {
               <Activity className="w-4 h-4 text-blue-400" />
               <span>Actividad Reciente</span>
               <span className="text-[10px] text-blue-400 font-mono bg-blue-500/10 px-1.5 py-0.2 rounded border border-blue-500/20">
-                DEMO
+                {modeLabel}
               </span>
             </h3>
             <button
@@ -387,22 +399,23 @@ export const ResumenEjecutivoScreen: React.FC = () => {
           <button
             onClick={() => setCurrentScreen('auditoria')}
             className="w-10 h-10 bg-[#1E293B] hover:bg-[#334155] text-[#E0E7FF] rounded-full flex items-center justify-center transition-all hover:scale-105 cursor-pointer"
-            title="Ver Bitácora de Auditoría DEMO"
-            aria-label="Ver Bitácora de Auditoría DEMO"
+            title={`Ver Bitácora de Auditoría ${modeLabel}`}
+            aria-label={`Ver Bitácora de Auditoría ${modeLabel}`}
           >
             <Activity className="w-4 h-4 text-sky-400" />
           </button>
-          <button
-            onClick={resetAllDemoData}
-            className="w-10 h-10 bg-[#1E293B] hover:bg-[#334155] text-orange-400 rounded-full flex items-center justify-center transition-all hover:scale-105 cursor-pointer"
-            title="Restablecer Datos DEMO"
-            aria-label="Restablecer Datos DEMO"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
+          {isDemo && (
+            <button
+              onClick={resetAllDemoData}
+              className="w-10 h-10 bg-[#1E293B] hover:bg-[#334155] text-orange-400 rounded-full flex items-center justify-center transition-all hover:scale-105 cursor-pointer"
+              title="Restablecer Datos DEMO"
+              aria-label="Restablecer Datos DEMO"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </aside>
     </div>
   );
 };
-
