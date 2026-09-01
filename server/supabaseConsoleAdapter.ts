@@ -7,6 +7,7 @@ export type ConsoleTable =
 export interface SupabaseConsoleAdapterOptions {
   url: string;
   secretKey: string;
+  schema: 'nuga_console' | 'nuga_console_production';
   timeoutMs: number;
   maxResponseBytes: number;
 }
@@ -170,8 +171,8 @@ export class SupabaseConsoleAdapter {
         signal: controller.signal,
         headers: {
           apikey: this.options.secretKey,
-          'accept-profile': 'nuga_console',
-          'content-profile': 'nuga_console',
+          'accept-profile': this.options.schema,
+          'content-profile': this.options.schema,
           'content-type': 'application/json',
           ...(options.prefer ? { prefer: options.prefer } : {})
         },

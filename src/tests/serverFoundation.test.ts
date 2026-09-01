@@ -31,7 +31,8 @@ function testConfig(): ServerConfig {
     hermesBoards: [],
     supabaseEnabled: false,
     supabaseUrl: '',
-    supabaseSecretKey: ''
+    supabaseSecretKey: '',
+    supabaseSchema: 'nuga_console'
   };
 }
 
@@ -88,6 +89,36 @@ describe('NUGA Console API staging foundation', () => {
         NUGA_OWNER_PASSWORD_HASH: TEST_HASH
       })
     ).toThrow(ServerConfigurationError);
+  });
+
+  it('requires the environment-specific Supabase schema', () => {
+    const base = {
+      NUGA_PUBLIC_ORIGIN: 'https://10.147.20.10',
+      NUGA_SESSION_SECRET: 'x'.repeat(32),
+      NUGA_OWNER_USERNAME: 'ramiro',
+      NUGA_OWNER_PASSWORD_HASH: TEST_HASH,
+      NUGA_SUPABASE_ENABLED: 'true',
+      NUGA_SUPABASE_URL: 'https://project.supabase.co',
+      NUGA_SUPABASE_SECRET_KEY: 'sb_secret_test-only-not-real'
+    };
+
+    expect(() => loadServerConfig({
+      ...base,
+      NUGA_SERVER_MODE: 'production',
+      NUGA_SUPABASE_SCHEMA: 'nuga_console'
+    })).toThrow(/nuga_console_production/);
+
+    expect(loadServerConfig({
+      ...base,
+      NUGA_SERVER_MODE: 'production',
+      NUGA_SUPABASE_SCHEMA: 'nuga_console_production'
+    }).supabaseSchema).toBe('nuga_console_production');
+
+    expect(() => loadServerConfig({
+      ...base,
+      NUGA_SERVER_MODE: 'staging',
+      NUGA_SUPABASE_SCHEMA: 'nuga_console_production'
+    })).toThrow(/nuga_console/);
   });
 
   it('serves a fail-closed staging status without integrations', async () => {
