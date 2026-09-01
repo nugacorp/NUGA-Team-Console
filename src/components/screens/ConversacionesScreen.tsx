@@ -30,8 +30,10 @@ export const ConversacionesScreen: React.FC = () => {
     setCurrentScreen,
     setSelectedDecisionId,
     setSelectedTaskId,
-    addToast
+    addToast,
+    appMode
   } = useApp();
+  const isDemoBuild = import.meta.env.VITE_APP_MODE === 'demo';
 
   const [activeConvId, setActiveConvId] = useState<string>(() => {
     if (selectedAgentId) {
@@ -73,6 +75,14 @@ export const ConversacionesScreen: React.FC = () => {
   const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
 
   const handleSendMessage = (textToSend?: string) => {
+    if (!isDemoBuild) {
+      addToast({
+        type: 'warning',
+        title: 'Mensajería no conectada',
+        message: 'No existe todavía un endpoint real de conversación. No se generó una respuesta local.'
+      });
+      return;
+    }
     const text = textToSend || inputText;
     if (!text.trim()) return;
 
@@ -96,13 +106,13 @@ export const ConversacionesScreen: React.FC = () => {
     }, 100);
   };
 
-  const quickPrompts = [
+  const quickPrompts = isDemoBuild ? [
     'Resume las decisiones pendientes más críticas y el estado del equipo hoy.',
     'Revisa el estado del piloto WISP y el hallazgo de firewall en EDGE-DEMO-01.',
     'Prepara una campaña de Internet Hogar con creatividades de video.',
     'Organiza los pendientes administrativos y el contrato de Carrier Metro.',
     '¿Qué tareas de NugaCore están listas para despliegue?'
-  ];
+  ] : [];
 
   return (
     <div id="screen-conversaciones" className="h-[calc(100vh-8.5rem)] flex flex-col md:flex-row gap-4 pb-2 animate-in fade-in duration-200">
@@ -115,7 +125,7 @@ export const ConversacionesScreen: React.FC = () => {
               Canales del Equipo (5)
             </h2>
             <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
-              DEMO
+              {appMode.toUpperCase()}
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">Coordinación ejecutiva y consultas</p>
@@ -317,7 +327,7 @@ export const ConversacionesScreen: React.FC = () => {
         </div>
 
         {/* Quick Prompts Bar */}
-        <div className="px-4 py-2 bg-slate-900/90 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+        {isDemoBuild && <div className="px-4 py-2 bg-slate-900/90 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto custom-scrollbar">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-sky-400" />
             Sugerencias:
@@ -331,7 +341,7 @@ export const ConversacionesScreen: React.FC = () => {
               {prompt}
             </button>
           ))}
-        </div>
+        </div>}
 
         {/* Input Bar & Controls */}
         <div className="p-4 bg-slate-900 border-t border-slate-800 space-y-3">
@@ -384,6 +394,7 @@ export const ConversacionesScreen: React.FC = () => {
           <div className="flex items-center gap-2">
             <input
               type="text"
+              disabled={!isDemoBuild}
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={e => {
@@ -392,12 +403,13 @@ export const ConversacionesScreen: React.FC = () => {
                   handleSendMessage();
                 }
               }}
-              placeholder={`Escribe una instrucción para ${activeConv?.title?.split(' & ')[0] || 'el agente'}...`}
+              placeholder={isDemoBuild ? `Escribe una instrucción para ${activeConv?.title?.split(' & ')[0] || 'el agente'}...` : 'Mensajería real todavía no conectada'}
               className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500"
             />
 
             <button
               id="btn-send-message"
+              disabled={!isDemoBuild}
               onClick={() => handleSendMessage()}
               className="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-sky-500/20"
             >
