@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { Deliverable, Project } from '../types';
+import { getDeliverableExportIssues } from './deliverableExportReadiness';
 
 interface PDFExportOptions {
   includeSignatures?: boolean;
@@ -220,6 +221,10 @@ class BrandedPdf {
 
 export class PDFExportService {
   static exportDeliverablePDF(deliverable: Deliverable, project?: Project, options: PDFExportOptions = { includeSignatures: true }): void {
+    const issues = getDeliverableExportIssues(deliverable);
+    if (issues.length > 0) {
+      throw new Error(`El entregable no está listo para exportar: ${issues.join(' ')}`);
+    }
     const pdf = new BrandedPdf();
     const { doc } = pdf;
     const projectName = project?.name || deliverable.projectId || 'Operación general';
@@ -355,6 +360,13 @@ export class PDFExportService {
   }
 
   static exportPortfolioReportPDF(deliverables: Deliverable[], projects: Project[]): void {
+    if (deliverables.length === 0) {
+      throw new Error('No existen entregables reales para generar el dossier.');
+    }
+    const invalid = deliverables.filter(item => getDeliverableExportIssues(item).length > 0);
+    if (invalid.length > 0) {
+      throw new Error(`El dossier contiene ${invalid.length} entregable(s) incompleto(s).`);
+    }
     const pdf = new BrandedPdf();
     const { doc } = pdf;
     const approved = deliverables.filter(item => item.status === 'approved').length;
