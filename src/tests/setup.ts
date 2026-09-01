@@ -1,13 +1,24 @@
 import '@testing-library/jest-dom';
 import { afterEach } from 'vitest';
 
-// Node 25+ can provide its own persistent Web Storage implementation when
-// --localstorage-file is enabled. Clear whichever implementation is active so
-// test files cannot leak browser state into one another.
+// Node 25+ defines an experimental global Web Storage accessor. Without
+// --localstorage-file that accessor can resolve to undefined and shadow the
+// fully functional JSDOM storage used by browser tests. Always bind the test
+// globals to JSDOM so results do not depend on the host Node configuration.
+if (typeof window !== 'undefined') {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: window.localStorage
+  });
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    value: window.sessionStorage
+  });
+}
+
 afterEach(() => {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.clear();
-  }
+  localStorage.clear();
+  sessionStorage.clear();
 });
 
 // Polyfills and mocks for JSDOM
