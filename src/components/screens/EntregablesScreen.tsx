@@ -663,23 +663,20 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
                   </div>
                 )}
 
-                {/* 5. Cryptographic Seal & Signatures Box */}
-                <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                {/* 5. Cryptographic evidence is shown only when supplied by the data source. */}
+                {activeDeliverable.simulatedSha256 && <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Hash className="w-3.5 h-3.5 text-teal-400" />
                       <span className="font-mono text-[11px]">
-                        SHA-256 (DEMO):{' '}
+                        SHA-256 reportado:{' '}
                         <strong className="text-slate-300 font-mono">
-                          {activeDeliverable.simulatedSha256 || 'e3b0c44298fc1c14...'}
+                          {activeDeliverable.simulatedSha256}
                         </strong>
-                      </span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        DEMO
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Hash calculado localmente en el navegador; no constituye firma digital ni evidencia de servidor.
+                      Evidencia informada por la fuente del entregable; verifique su procedencia antes de usarla como firma digital.
                     </p>
                   </div>
 
@@ -690,7 +687,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
                     <Copy className="w-3.5 h-3.5 text-teal-400" />
                     <span>Copiar Hash</span>
                   </button>
-                </div>
+                </div>}
               </div>
             )}
 

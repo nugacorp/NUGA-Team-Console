@@ -25,7 +25,8 @@ export const MarketingScreen: React.FC = () => {
     selectedMediaAsset,
     setSelectedMediaAsset,
     openModal,
-    addToast
+    addToast,
+    appMode
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'campaigns' | 'library' | 'generator'>('campaigns');
@@ -33,13 +34,15 @@ export const MarketingScreen: React.FC = () => {
   const selectedCampaign = campaigns.find(c => c.id === selectedCampaignIdLocal) || campaigns[0];
 
   // Generator form state
-  const [genObjective, setGenObjective] = useState('Captación de clientes residenciales en zona Norte');
+  const isDemo = appMode === 'demo';
+  const [genObjective, setGenObjective] = useState('');
   const [genChannel, setGenChannel] = useState<'meta_ads' | 'tiktok' | 'google_ads'>('meta_ads');
   const [genFormat, setGenFormat] = useState<'9:16' | '16:9' | '1:1'>('9:16');
-  const [genHook, setGenHook] = useState('¿Tu internet se corta en las videollamadas importantes?');
+  const [genHook, setGenHook] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleSimulateGeneration = () => {
+    if (!isDemo) return;
     setIsGenerating(true);
     setTimeout(() => {
       setIsGenerating(false);
@@ -64,37 +67,37 @@ export const MarketingScreen: React.FC = () => {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-100">Marketing & Biblioteca Multimedia</h2>
               <span className="px-2 py-0.5 rounded bg-fuchsia-500/10 border border-fuchsia-500/20 text-[10px] font-mono font-bold text-fuchsia-400">
-                DEMO
+                {isDemo ? 'DEMO' : appMode.toUpperCase()}
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Campañas de pauta, generación de videos (simulado) y métricas de adquisición
+              {isDemo ? 'Campañas y creativos locales de demostración' : 'Campañas y activos recibidos desde la API de NUGA'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
+          {isDemo && <button
             onClick={() => setActiveTab('generator')}
             className="px-3.5 py-2 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-fuchsia-500/20"
           >
             <Sparkles className="w-4 h-4" />
             <span>Generar Video con IA</span>
-          </button>
+          </button>}
 
-          <button
+          {isDemo && <button
             onClick={() => openModal('newCampaign')}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-4 h-4 text-fuchsia-400" />
             <span>Nueva Campaña</span>
-          </button>
+          </button>}
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-        <button
+        {isDemo && <button
           onClick={() => setActiveTab('campaigns')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeTab === 'campaigns'
@@ -104,7 +107,7 @@ export const MarketingScreen: React.FC = () => {
         >
           <TrendingUp className="w-4 h-4" />
           <span>Campañas Activas ({campaigns.length})</span>
-        </button>
+        </button>}
 
         <button
           onClick={() => setActiveTab('library')}
@@ -183,14 +186,14 @@ export const MarketingScreen: React.FC = () => {
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Presupuesto Simulado</span>
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Presupuesto reportado</span>
                     <span className="text-base font-bold text-slate-100">${(selectedCampaign.simulatedBudgetUsd || 0).toLocaleString()} USD</span>
                   </div>
                 </div>
 
                 {/* Performance Metrics */}
                 <div>
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Métricas de Rendimiento (Simuladas):</span>
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Métricas de rendimiento reportadas:</span>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
                     <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60 text-xs">
                       <span className="text-slate-400 text-[10px] block">Impresiones</span>
@@ -282,7 +285,7 @@ export const MarketingScreen: React.FC = () => {
       )}
 
       {/* TAB 3: Creative Prompt Generator */}
-      {activeTab === 'generator' && (
+      {isDemo && activeTab === 'generator' && (
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl max-w-3xl space-y-6">
           <div>
             <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">

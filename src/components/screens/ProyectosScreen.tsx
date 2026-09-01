@@ -23,7 +23,8 @@ export const ProyectosScreen: React.FC = () => {
     setCurrentScreen,
     setSelectedTaskId,
     setSelectedDeliverableId,
-    openModal
+    openModal,
+    appMode
   } = useApp();
 
   const [selectedProjectIdLocal, setSelectedProjectIdLocal] = useState<string>(() => projects[0]?.id || 'proj-wisp-expansion');
@@ -41,7 +42,7 @@ export const ProyectosScreen: React.FC = () => {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-100">Proyectos Estratégicos & Roadmaps</h2>
               <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
-                DEMO
+                {appMode.toUpperCase()}
               </span>
             </div>
             <p className="text-xs text-slate-400">
@@ -50,13 +51,13 @@ export const ProyectosScreen: React.FC = () => {
           </div>
         </div>
 
-        <button
+        {appMode === 'demo' && <button
           onClick={() => openModal('newTask', { projectId: selectedProject?.id })}
           className="px-3.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-sky-500/20"
         >
           <Plus className="w-4 h-4" />
           <span>Crear Tarea para Proyecto</span>
-        </button>
+        </button>}
       </div>
 
       {/* Project Cards Selector */}

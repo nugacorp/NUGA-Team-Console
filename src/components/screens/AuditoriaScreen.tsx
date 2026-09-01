@@ -20,7 +20,8 @@ import { useApp } from '../../context/AppContext';
 import { AuditEvent } from '../../types';
 
 export const AuditoriaScreen: React.FC = () => {
-  const { auditEvents, addToast } = useApp();
+  const { auditEvents, addToast, appMode } = useApp();
+  const isDemo = appMode === 'demo';
 
   const [filterActor, setFilterActor] = useState<string>('all');
   const [filterActionType, setFilterActionType] = useState<string>('all');
@@ -68,10 +69,10 @@ export const AuditoriaScreen: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-100">Bitácora de Auditoría del Sistema</h2>
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">DEMO</span>
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">{appMode.toUpperCase()}</span>
             </div>
             <p className="text-xs text-slate-400">
-              Bitácora DEMO almacenada en el almacenamiento local del navegador. Registra trazabilidad de acciones, aprobaciones y tareas durante la sesión.
+              {isDemo ? 'Bitácora local de demostración.' : 'Eventos de auditoría recibidos desde la API de NUGA. No se fabrican eventos ausentes.'}
             </p>
           </div>
         </div>
@@ -177,7 +178,7 @@ export const AuditoriaScreen: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    DEMO
+                    {evt.mode?.toUpperCase() || appMode.toUpperCase()}
                   </span>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${

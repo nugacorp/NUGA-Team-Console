@@ -18,7 +18,7 @@ import { useApp } from '../../context/AppContext';
 import { AdminItem } from '../../types';
 
 export const AdministracionScreen: React.FC = () => {
-  const { adminItems, openModal } = useApp();
+  const { adminItems, openModal, appMode } = useApp();
 
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -48,7 +48,7 @@ export const AdministracionScreen: React.FC = () => {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-100">Operaciones Administrativas & Acuerdos</h2>
               <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] font-mono font-bold text-amber-400">
-                DEMO
+                {appMode.toUpperCase()}
               </span>
             </div>
             <p className="text-xs text-slate-400">
@@ -57,13 +57,13 @@ export const AdministracionScreen: React.FC = () => {
           </div>
         </div>
 
-        <button
+        {appMode === 'demo' && <button
           onClick={() => openModal('newAdminItem')}
           className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20"
         >
           <Plus className="w-4 h-4" />
           <span>Nuevo Registro Administrativo</span>
-        </button>
+        </button>}
       </div>
 
       {/* Notice Banner */}

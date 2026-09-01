@@ -5,6 +5,9 @@ import { EquipoIAScreen } from '../components/screens/EquipoIAScreen';
 import { OperacionesWispScreen } from '../components/screens/OperacionesWispScreen';
 import { NugaCoreScreen } from '../components/screens/NugaCoreScreen';
 import { TareasScreen } from '../components/screens/TareasScreen';
+import { MarketingScreen } from '../components/screens/MarketingScreen';
+import { ConfiguracionScreen } from '../components/screens/ConfiguracionScreen';
+import { AuditoriaScreen } from '../components/screens/AuditoriaScreen';
 import { useApp } from '../context/AppContext';
 
 vi.mock('../context/AppContext', () => ({
@@ -124,5 +127,60 @@ describe('Production screens with disconnected data sources', () => {
     expect(setSelectedTaskId).toHaveBeenCalledWith(task.id);
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
     expect(screen.getByText('Objetivo leído del tablero Hermes.')).toBeInTheDocument();
+  });
+
+  it('does not expose simulated marketing actions or values in production', () => {
+    mockedUseApp.mockReturnValue({
+      campaigns: [],
+      mediaAssets: [],
+      selectedMediaAsset: undefined,
+      setSelectedMediaAsset: vi.fn(),
+      openModal: vi.fn(),
+      addToast: vi.fn(),
+      appMode: 'production'
+    } as unknown as ReturnType<typeof useApp>);
+
+    render(<MarketingScreen />);
+
+    expect(screen.queryByText('Generar Video con IA')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Simulado/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/recibidos desde la API de NUGA/i)).toBeInTheDocument();
+  });
+
+  it('reports disconnected integrations instead of fabricated adapter status', () => {
+    mockedUseApp.mockReturnValue({
+      settings: {
+        requireHumanApprovalAllHighRisk: true,
+        allowWriteToolsGlobal: false,
+        maskSensitiveData: true
+      },
+      updateSettings: vi.fn(),
+      theme: 'dark',
+      toggleTheme: vi.fn(),
+      resetAllDemoData: vi.fn(),
+      appMode: 'production',
+      serverStatus: { hermes: 'available' }
+    } as unknown as ReturnType<typeof useApp>);
+
+    render(<ConfiguracionScreen />);
+
+    expect(screen.queryByText(/ONLINE \(SIMULADO\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/telemetría mock/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText('NO CONECTADO').length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('Restablecer Datos DEMO')).not.toBeInTheDocument();
+  });
+
+  it('labels production audit events by their real source mode', () => {
+    mockedUseApp.mockReturnValue({
+      auditEvents: [],
+      addToast: vi.fn(),
+      appMode: 'production'
+    } as unknown as ReturnType<typeof useApp>);
+
+    render(<AuditoriaScreen />);
+
+    expect(screen.getByText('PRODUCTION')).toBeInTheDocument();
+    expect(screen.getByText(/No se fabrican eventos ausentes/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Bitácora DEMO/i)).not.toBeInTheDocument();
   });
 });
