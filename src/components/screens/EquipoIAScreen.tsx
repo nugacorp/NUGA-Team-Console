@@ -14,16 +14,21 @@ import {
   Radio,
   Briefcase,
   Code2,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  LoaderCircle,
+  UserRound
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AgentProfile, AgentRole } from '../../types';
 
 export const EquipoIAScreen: React.FC = () => {
-  const { agents, updateAgent, setCurrentScreen, setSelectedAgentId, conversations } = useApp();
+  const { agents, updateAgent, setCurrentScreen, setSelectedAgentId, conversations, appMode } = useApp();
   const [selectedAgent, setSelectedAgent] = useState<AgentProfile | null>(agents[0] ?? null);
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState(selectedAgent?.systemInstructions ?? '');
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const modeLabel = appMode === 'demo' ? 'DEMO' : appMode === 'staging' ? 'STAGING' : 'PRODUCCIÓN';
 
   useEffect(() => {
     setSelectedAgent(current => {
@@ -43,20 +48,89 @@ export const EquipoIAScreen: React.FC = () => {
     setIsEditingPrompt(false);
   };
 
-  const handleSavePrompt = () => {
+  const handleSavePrompt = async () => {
     if (!selectedAgent) return;
 
-    updateAgent(selectedAgent.id, { systemInstructions: customPrompt });
-    setIsEditingPrompt(false);
-    setSelectedAgent(prev => prev ? { ...prev, systemInstructions: customPrompt } : null);
+    const saved = await updateAgent(selectedAgent.id, { systemInstructions: customPrompt });
+    if (saved) {
+      setIsEditingPrompt(false);
+      setSelectedAgent(prev => prev ? { ...prev, systemInstructions: customPrompt } : null);
+    }
   };
 
-  const handleAutonomyChange = (level: AgentProfile['autonomyLevel']) => {
+  const handleAutonomyChange = async (level: AgentProfile['autonomyLevel']) => {
     if (!selectedAgent) return;
 
-    updateAgent(selectedAgent.id, { autonomyLevel: level });
-    setSelectedAgent(prev => prev ? { ...prev, autonomyLevel: level } : null);
+    const saved = await updateAgent(selectedAgent.id, { autonomyLevel: level });
+    if (saved) setSelectedAgent(prev => prev ? { ...prev, autonomyLevel: level } : null);
   };
+
+  const resizeAvatar = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      reject(new Error('Selecciona una imagen PNG, JPEG o WebP.'));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      reject(new Error('La imagen original no debe exceder 8 MB.'));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No fue posible leer la imagen.'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('El archivo no contiene una imagen válida.'));
+      image.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        if (!context) {
+          reject(new Error('El navegador no pudo procesar la imagen.'));
+          return;
+        }
+        const sourceSize = Math.min(image.width, image.height);
+        const sourceX = (image.width - sourceSize) / 2;
+        const sourceY = (image.height - sourceSize) / 2;
+        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+        const result = canvas.toDataURL('image/webp', 0.82);
+        if (result.length > 180_000) {
+          reject(new Error('La imagen procesada excede el límite permitido.'));
+          return;
+        }
+        resolve(result);
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const handleAvatarFile = async (file?: File) => {
+    if (!selectedAgent || !file) return;
+    setSavingAvatar(true);
+    try {
+      const avatar = await resizeAvatar(file);
+      const saved = await updateAgent(selectedAgent.id, { avatar });
+      if (saved) setSelectedAgent(current => current ? { ...current, avatar } : null);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No fue posible procesar la imagen.');
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
+
+  const renderAvatar = (agent: AgentProfile, className: string) => agent.avatar ? (
+    <img
+      src={agent.avatar}
+      alt={agent.name}
+      className={className}
+      onError={event => {
+        event.currentTarget.style.display = 'none';
+        event.currentTarget.nextElementSibling?.classList.remove('hidden');
+      }}
+    />
+  ) : null;
 
   return (
     <div id="screen-equipo-ia" className="space-y-6 pb-12 animate-in fade-in duration-200">
@@ -71,18 +145,18 @@ export const EquipoIAScreen: React.FC = () => {
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-slate-100">Organigrama de los 5 Perfiles del Equipo</h2>
                 <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
-                  DEMO
+                  {modeLabel}
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Estructura de coordinación, perfiles del equipo, límites de autonomía y permisos en simulación local
+                Estructura de coordinación, perfiles del equipo, límites de autonomía y permisos del entorno {modeLabel.toLowerCase()}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-              5 perfiles del equipo · DEMO
+              {agents.length} perfiles del equipo · {modeLabel}
             </span>
           </div>
         </div>
@@ -106,11 +180,12 @@ export const EquipoIAScreen: React.FC = () => {
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <img
-                    src={agent.avatar}
-                    alt={agent.name}
-                    className="w-11 h-11 rounded-xl object-cover ring-2 ring-slate-700 shrink-0"
-                  />
+                  <div className="relative w-11 h-11 shrink-0">
+                    {renderAvatar(agent, 'absolute inset-0 w-11 h-11 rounded-xl object-cover ring-2 ring-slate-700')}
+                    <div className={`w-11 h-11 rounded-xl bg-sky-500/15 text-sky-300 ring-2 ring-slate-700 flex items-center justify-center font-bold ${agent.avatar ? 'hidden' : ''}`}>
+                      {agent.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  </div>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isDirector
@@ -130,7 +205,7 @@ export const EquipoIAScreen: React.FC = () => {
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400 font-mono">{agent.model ? agent.model.split('/')[0].trim() : 'Gemini'} · DEMO</span>
+                <span className="text-slate-400 font-mono">{agent.model ? agent.model.split('/')[0].trim() : 'Hermes'} · {modeLabel}</span>
                 <span
                   className={`w-2 h-2 rounded-full ${
                     agent.status === 'active'
@@ -166,11 +241,25 @@ export const EquipoIAScreen: React.FC = () => {
               {/* Header info */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                  <img
-                    src={selectedAgent.avatar}
-                    alt={selectedAgent.name}
-                    className="w-14 h-14 rounded-2xl object-cover ring-2 ring-sky-500/40"
-                  />
+                  <div className="relative w-14 h-14 shrink-0 group">
+                    {renderAvatar(selectedAgent, 'absolute inset-0 w-14 h-14 rounded-2xl object-cover ring-2 ring-sky-500/40')}
+                    <div className={`w-14 h-14 rounded-2xl bg-sky-500/15 text-sky-300 ring-2 ring-sky-500/40 flex items-center justify-center font-bold ${selectedAgent.avatar ? 'hidden' : ''}`}>
+                      <UserRound className="w-6 h-6" />
+                    </div>
+                    <label className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-sky-500 hover:bg-sky-400 text-slate-950 flex items-center justify-center cursor-pointer shadow-lg" title="Cambiar foto">
+                      {savingAvatar ? <LoaderCircle className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        disabled={savingAvatar}
+                        onChange={event => {
+                          void handleAvatarFile(event.target.files?.[0]);
+                          event.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
                   <div>
                     <h3 className="text-lg font-extrabold text-slate-100">{selectedAgent.name}</h3>
                     <p className="text-xs text-sky-400 font-semibold">{selectedAgent.roleTitle}</p>
