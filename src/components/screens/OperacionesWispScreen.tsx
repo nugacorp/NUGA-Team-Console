@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Radio,
   Server,
@@ -34,12 +34,22 @@ export const OperacionesWispScreen: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'routers' | 'towers' | 'links' | 'incidents'>('routers');
-  const [selectedRouter, setSelectedRouter] = useState<MikroTikRouter>(
-    routers.find(r => r.id === selectedRouterId) || routers[0]
+  const [selectedRouter, setSelectedRouter] = useState<MikroTikRouter | null>(
+    routers.find(r => r.id === selectedRouterId) ?? routers[0] ?? null
   );
   const [isAuditing, setIsAuditing] = useState(false);
   const [showBackupProposalModal, setShowBackupProposalModal] = useState(false);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+
+  useEffect(() => {
+    setSelectedRouter(current => {
+      if (current && routers.some(router => router.id === current.id)) {
+        return current;
+      }
+
+      return routers.find(router => router.id === selectedRouterId) ?? routers[0] ?? null;
+    });
+  }, [routers, selectedRouterId]);
 
   const handleSimulateAudit = () => {
     setIsAuditing(true);
@@ -54,6 +64,8 @@ export const OperacionesWispScreen: React.FC = () => {
   };
 
   const handleRequestDryRun = () => {
+    if (!selectedRouter) return;
+
     addToast({
       type: 'info',
       title: 'Dry-Run Solicitado',
@@ -62,6 +74,8 @@ export const OperacionesWispScreen: React.FC = () => {
   };
 
   const handleSendToApproval = () => {
+    if (!selectedRouter) return;
+
     addToast({
       type: 'success',
       title: 'Propuesta Enviada a Aprobación',
@@ -95,7 +109,7 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-run-mikrotik-audit"
             onClick={handleSimulateAudit}
-            disabled={isAuditing}
+            disabled={isAuditing || !selectedRouter}
             className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-green-950/40 disabled:opacity-50 cursor-pointer"
           >
             <ShieldAlert className="w-3.5 h-3.5" />
@@ -105,6 +119,7 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-prepare-backup-proposal"
             onClick={() => setShowBackupProposalModal(true)}
+            disabled={!selectedRouter}
             className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5" />
@@ -114,6 +129,7 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-request-dryrun"
             onClick={handleRequestDryRun}
+            disabled={!selectedRouter}
             className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Play className="w-3.5 h-3.5" />
@@ -123,6 +139,7 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-send-approval"
             onClick={handleSendToApproval}
+            disabled={!selectedRouter}
             className="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
@@ -132,6 +149,7 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-view-evidence"
             onClick={() => setShowEvidenceModal(true)}
+            disabled={!selectedRouter}
             className="px-3 py-1.5 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#E0E7FF] border border-[#1E293B] font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5 text-slate-400" />
@@ -204,8 +222,17 @@ export const OperacionesWispScreen: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Routers List (5 cols) */}
           <div className="lg:col-span-5 space-y-3">
+            {routers.length === 0 && (
+              <div className="p-5 rounded-xl bg-[#111D27] border border-[#1E293B] text-center">
+                <Server className="w-8 h-8 mx-auto text-slate-500 mb-2" />
+                <h3 className="text-sm font-bold text-white">MikroTik no conectado</h3>
+                <p className="text-xs text-[#94A3B8] mt-1">
+                  No hay routers disponibles. La consola mantiene deshabilitadas las acciones WISP.
+                </p>
+              </div>
+            )}
             {routers.map(router => {
-              const isSelected = selectedRouter.id === router.id;
+              const isSelected = selectedRouter?.id === router.id;
               const allFindings = router.findings || (router as any).securityFindings || [];
               const hasCrit = allFindings.some((f: any) => f.severity === 'critical');
               const ipDisplay = router.interfaces?.[0]?.ipAddress || (router as any).ip || '192.0.2.1';
@@ -262,7 +289,8 @@ export const OperacionesWispScreen: React.FC = () => {
 
           {/* Router Deep Inspection & Security Hardening (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="p-5 rounded-xl bg-[#111D27] border border-[#1E293B] shadow-xl space-y-5">
+            {selectedRouter ? (
+              <div className="p-5 rounded-xl bg-[#111D27] border border-[#1E293B] shadow-xl space-y-5">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1E293B]">
                 <div>
@@ -379,7 +407,12 @@ export const OperacionesWispScreen: React.FC = () => {
                   </button>
                 </div>
               )}
-            </div>
+              </div>
+            ) : (
+              <div className="p-5 rounded-xl bg-[#111D27] border border-[#1E293B] text-xs text-[#94A3B8]">
+                Selecciona un router cuando la integración MikroTik esté disponible.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -535,7 +568,7 @@ export const OperacionesWispScreen: React.FC = () => {
       )}
 
       {/* MODAL: Preparar Propuesta de Respaldo */}
-      {showBackupProposalModal && (
+      {showBackupProposalModal && selectedRouter && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-6 space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -636,7 +669,7 @@ export const OperacionesWispScreen: React.FC = () => {
       )}
 
       {/* MODAL: Ver Evidencia */}
-      {showEvidenceModal && (
+      {showEvidenceModal && selectedRouter && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
