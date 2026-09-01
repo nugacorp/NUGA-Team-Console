@@ -215,6 +215,47 @@ describe('NUGA Console API staging foundation', () => {
     });
   });
 
+  it('serves production-safe team profiles and explicit empty disconnected modules', async () => {
+    const baseUrl = await startTestServer();
+    const loginResponse = await login(baseUrl);
+    const cookie = loginResponse.headers.get('set-cookie') ?? '';
+    const headers = {
+      cookie,
+      'x-nuga-mode': 'staging'
+    };
+
+    const agentsResponse = await fetch(`${baseUrl}/api/v1/agents`, { headers });
+    expect(agentsResponse.status).toBe(200);
+    const agents = await agentsResponse.json() as Array<Record<string, unknown>>;
+    expect(agents).toHaveLength(5);
+    expect(agents.every(agent => agent.isDemo !== true)).toBe(true);
+
+    for (const path of [
+      '/api/v1/projects',
+      '/api/v1/wisp/towers',
+      '/api/v1/wisp/routers',
+      '/api/v1/wisp/links',
+      '/api/v1/wisp/incidents',
+      '/api/v1/marketing/campaigns',
+      '/api/v1/marketing/media-assets',
+      '/api/v1/conversations',
+      '/api/v1/admin/items',
+      '/api/v1/notifications'
+    ]) {
+      const response = await fetch(`${baseUrl}${path}`, { headers });
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual([]);
+    }
+
+    const settingsResponse = await fetch(`${baseUrl}/api/v1/config/settings`, { headers });
+    expect(settingsResponse.status).toBe(200);
+    await expect(settingsResponse.json()).resolves.toMatchObject({
+      isDemo: false,
+      allowWriteToolsGlobal: false,
+      mikrotikApiStatus: 'disconnected'
+    });
+  });
+
   it('requires the session CSRF token to log out', async () => {
     const baseUrl = await startTestServer();
     const loginResponse = await login(baseUrl);
