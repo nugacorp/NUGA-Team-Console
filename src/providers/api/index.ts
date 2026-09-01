@@ -43,6 +43,7 @@ import {
   AuditRecordPayload,
   AppMode
 } from '../../types';
+import { getApiCsrfToken } from '../../auth/apiCsrf';
 import {
   parseBackendCapabilities,
   parseServerStatusContract,
@@ -120,6 +121,11 @@ export class HttpClient {
         'X-Nuga-Mode': this.mode,
         ...(options.headers as Record<string, string> || {})
       };
+      const method = (options.method ?? 'GET').toUpperCase();
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const csrfToken = getApiCsrfToken();
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+      }
 
       const response = await fetch(url, {
         ...options,
