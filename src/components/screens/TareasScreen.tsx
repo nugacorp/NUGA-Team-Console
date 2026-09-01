@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KanbanSquare,
   List,
@@ -22,7 +22,10 @@ export const TareasScreen: React.FC = () => {
     projects,
     agents,
     appMode,
-    openModal
+    openModal,
+    loadTaskDetail,
+    taskDetailLoading,
+    taskDetailError
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -33,6 +36,18 @@ export const TareasScreen: React.FC = () => {
   const [commentInput, setCommentInput] = useState<string>('');
 
   const activeTask = tasks.find(t => t.id === selectedTaskId) || tasks[0];
+
+  useEffect(() => {
+    if (appMode !== 'demo' && !selectedTaskId && tasks[0]) {
+      setSelectedTaskId(tasks[0].id);
+    }
+  }, [appMode, selectedTaskId, setSelectedTaskId, tasks]);
+
+  useEffect(() => {
+    if (appMode !== 'demo' && selectedTaskId) {
+      void loadTaskDetail(selectedTaskId);
+    }
+  }, [appMode, loadTaskDetail, selectedTaskId]);
 
   const columns: { id: TaskStatus; label: string; color: string }[] = [
     { id: 'backlog', label: 'Backlog / Plan', color: 'border-[#1E293B]' },
@@ -322,6 +337,16 @@ export const TareasScreen: React.FC = () => {
       {/* Selected Task Detail Bento Card */}
       {activeTask && (
         <div className="p-5 rounded-xl bg-[#111D27] border border-[#1E293B] shadow-xl space-y-5">
+          {taskDetailLoading && appMode !== 'demo' && (
+            <div className="text-xs text-blue-300 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
+              Consultando detalle read-only en Hermes…
+            </div>
+          )}
+          {taskDetailError && appMode !== 'demo' && (
+            <div className="text-xs text-amber-300 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              {taskDetailError}
+            </div>
+          )}
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 pb-3 border-b border-[#1E293B]">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
@@ -363,6 +388,42 @@ export const TareasScreen: React.FC = () => {
               {activeTask.description}
             </p>
           </div>
+
+          {activeTask.latestSummary && (
+            <div>
+              <span className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider">Último resumen de Hermes:</span>
+              <p className="text-xs text-[#E0E7FF] mt-1.5 leading-relaxed bg-blue-500/5 p-4 rounded-lg border border-blue-500/20">
+                {activeTask.latestSummary}
+              </p>
+            </div>
+          )}
+
+          {((activeTask.parentTaskIds?.length ?? 0) > 0 || (activeTask.childTaskIds?.length ?? 0) > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="bg-[#0A141D] border border-[#1E293B] rounded-lg p-3">
+                <strong className="text-[#94A3B8]">Tareas padre</strong>
+                <p className="font-mono text-blue-300 mt-1">{activeTask.parentTaskIds?.join(', ') || 'Ninguna'}</p>
+              </div>
+              <div className="bg-[#0A141D] border border-[#1E293B] rounded-lg p-3">
+                <strong className="text-[#94A3B8]">Tareas hijas</strong>
+                <p className="font-mono text-blue-300 mt-1">{activeTask.childTaskIds?.join(', ') || 'Ninguna'}</p>
+              </div>
+            </div>
+          )}
+
+          {activeTask.events && activeTask.events.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider">Eventos de Hermes:</span>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
+                {activeTask.events.map(event => (
+                  <div key={event.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-[#0A141D] border border-[#1E293B] text-xs">
+                    <span className="text-[#E0E7FF] font-medium">{event.kind}</span>
+                    <span className="font-mono text-[10px] text-[#64748B]">{new Date(event.timestamp).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Technical Runs History (if any) */}
           {activeTask.runs && activeTask.runs.length > 0 && (
