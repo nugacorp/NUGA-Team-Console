@@ -1,11 +1,33 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv, Plugin} from 'vite';
 
-export default defineConfig(() => {
+function productionIsolationPlugin(appMode: string): Plugin {
+  const productionStorage = path.resolve(__dirname, 'src/services/productionStorageService.ts');
+  const productionDemoProvider = path.resolve(__dirname, 'src/providers/productionDemoProvider.ts');
+
   return {
-    plugins: [react(), tailwindcss()],
+    name: 'nuga-production-isolation',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (appMode !== 'production' || !importer) return null;
+      if (source.endsWith('/services/storageService') || source === './storageService') {
+        return productionStorage;
+      }
+      if (source === './demo' && importer.endsWith('/src/providers/index.ts')) {
+        return productionDemoProvider;
+      }
+      return null;
+    },
+  };
+}
+
+export default defineConfig(({mode}) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const appMode = env.VITE_APP_MODE || 'demo';
+  return {
+    plugins: [productionIsolationPlugin(appMode), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
