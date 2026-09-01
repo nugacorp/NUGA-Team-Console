@@ -1,5 +1,6 @@
 export type ConsoleTable =
   | 'task_extensions'
+  | 'agent_profiles'
   | 'decisions'
   | 'deliverables'
   | 'audit_events';
@@ -141,7 +142,33 @@ export class SupabaseConsoleAdapter {
     });
   }
 
-  create(table: Exclude<ConsoleTable, 'task_extensions'>, value: Record<string, unknown>) {
+  listAgentProfiles() {
+    return this.call('GET', 'agent_profiles', {
+      query: {
+        select: 'role,avatar_data_url,autonomy_level,system_instructions,updated_at',
+        order: 'role.asc',
+        limit: '5'
+      }
+    });
+  }
+
+  upsertAgentProfile(value: Record<string, unknown>) {
+    assertNoSensitiveKeys(value);
+    const allowed = new Set([
+      'role', 'avatar_data_url', 'autonomy_level', 'system_instructions'
+    ]);
+    if (Object.keys(value).some(key => !allowed.has(key))) {
+      throw new SupabaseConsoleError('DENIED', 'El perfil contiene campos no permitidos.');
+    }
+    const role = assertIdentifier(String(value.role ?? ''), 'role');
+    return this.call('POST', 'agent_profiles', {
+      query: { on_conflict: 'role' },
+      prefer: 'resolution=merge-duplicates,return=representation',
+      body: { ...value, role }
+    });
+  }
+
+  create(table: Exclude<ConsoleTable, 'task_extensions' | 'agent_profiles'>, value: Record<string, unknown>) {
     return this.call('POST', table, {
       prefer: 'return=representation',
       body: allowlistedPayload(table, value)
