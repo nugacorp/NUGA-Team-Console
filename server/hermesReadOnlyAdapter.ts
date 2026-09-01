@@ -40,6 +40,7 @@ export interface HermesTaskDetailDto {
   parents: string[];
   children: string[];
   comments: Array<{ author: string; body: string; createdAt: number }>;
+  events: Array<{ kind: string; createdAt: number; runId?: string }>;
   runs: unknown[];
   latestSummary?: string;
 }
@@ -202,12 +203,22 @@ export class HermesReadOnlyAdapter {
       const createdAt = numberValue(item.created_at);
       return author && body && createdAt !== undefined ? [{ author, body, createdAt }] : [];
     }) : [];
+    const events = Array.isArray(value.events) ? value.events.flatMap(item => {
+      if (!isRecord(item)) return [];
+      const kind = stringValue(item.kind, 100);
+      const createdAt = numberValue(item.created_at);
+      const runId = stringValue(item.run_id, 128);
+      return kind && createdAt !== undefined
+        ? [{ kind, createdAt, ...(runId && SAFE_ID.test(runId) ? { runId } : {}) }]
+        : [];
+    }) : [];
 
     return {
       task,
       parents: ids(value.parents),
       children: ids(value.children),
       comments,
+      events,
       runs: Array.isArray(value.runs) ? value.runs.slice(0, 100) : [],
       ...(stringValue(value.latest_summary, 10_000) ? { latestSummary: stringValue(value.latest_summary, 10_000) } : {})
     };
