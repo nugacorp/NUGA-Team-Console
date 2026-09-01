@@ -24,7 +24,7 @@ import { useApp } from '../../context/AppContext';
 
 export const DecisionDetailModal: React.FC = () => {
   const { activeModal, closeModal, modalProps, decisions, executeDecisionAction, appMode } = useApp();
-  const isDemo = appMode === 'demo';
+  const isDemo = import.meta.env.VITE_APP_MODE === 'demo';
 
   const decision = decisions.find(d => d.id === modalProps?.decisionId);
 

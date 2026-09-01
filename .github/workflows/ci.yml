@@ -60,9 +60,12 @@ jobs:
 
       - name: Production build
         env:
-          VITE_APP_MODE: demo
+          VITE_APP_MODE: production
           VITE_NUGA_API_URL: /api
         run: bun run build
+
+      - name: Reject DEMO data in production artifact
+        run: bun run check:production-artifact
 
       - name: Enforce JavaScript chunk budget
         run: bun run check:bundle-size

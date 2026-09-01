@@ -34,7 +34,7 @@ export const MarketingScreen: React.FC = () => {
   const selectedCampaign = campaigns.find(c => c.id === selectedCampaignIdLocal) || campaigns[0];
 
   // Generator form state
-  const isDemo = appMode === 'demo';
+  const isDemo = import.meta.env.VITE_APP_MODE === 'demo';
   const [genObjective, setGenObjective] = useState('');
   const [genChannel, setGenChannel] = useState<'meta_ads' | 'tiktok' | 'google_ads'>('meta_ads');
   const [genFormat, setGenFormat] = useState<'9:16' | '16:9' | '1:1'>('9:16');
