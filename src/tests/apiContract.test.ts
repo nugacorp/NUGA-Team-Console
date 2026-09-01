@@ -137,6 +137,33 @@ describe('NUGA API v1 staging boundary', () => {
     expect(result.data).toBeUndefined();
   });
 
+  it('loads a compound Hermes task detail through the scoped read-only route', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      task: {
+        id: 'task-9', board: 'nuga-team-lab', title: 'Validar detalle', status: 'ready',
+        priority: 2, createdAt: 1_788_000_000, source: 'hermes'
+      },
+      parents: ['parent-1'], children: ['child-1'],
+      comments: [{ author: 'ramiro', body: 'Revisado', createdAt: 1_788_000_100 }],
+      events: [{ kind: 'status_changed', createdAt: 1_788_000_200 }],
+      runs: [], latestSummary: 'Validación read-only completa.'
+    }), { status: 200 }));
+
+    const result = await new ApiTasksProvider(
+      new HttpClient({ baseUrl: '/api', mode: 'production' })
+    ).getTaskById('nuga-team-lab:task-9');
+
+    expect(result.data).toMatchObject({
+      id: 'nuga-team-lab:task-9',
+      parentTaskIds: ['parent-1'], childTaskIds: ['child-1'],
+      latestSummary: 'Validación read-only completa.'
+    });
+    expect(result.data?.comments?.[0].text).toBe('Revisado');
+    expect(result.data?.events?.[0].kind).toBe('status_changed');
+    expect(fetchSpy.mock.calls[0][0]).toBe('/api/v1/hermes/boards/nuga-team-lab/tasks/task-9');
+    expect((fetchSpy.mock.calls[0][1] as RequestInit).method).toBeUndefined();
+  });
+
   it('never includes the typed confirmation phrase in a remote decision payload', async () => {
     const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValueOnce({
       ok: true,
