@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AppDependencies, createApp } from '../../server/app';
 import { createPasswordHash } from '../../server/auth';
+import { SupabaseConsoleAdapter } from '../../server/supabaseConsoleAdapter';
 import {
   ServerConfigurationError,
   loadServerConfig,
@@ -254,6 +255,44 @@ describe('NUGA Console API staging foundation', () => {
       allowWriteToolsGlobal: false,
       mikrotikApiStatus: 'disconnected'
     });
+  });
+
+  it('requires CSRF and persists an allowlisted profile avatar through the backend adapter', async () => {
+    const avatar = 'data:image/webp;base64,QUJDRA==';
+    const upsertAgentProfile = async (value: Record<string, unknown>) => [{
+      ...value,
+      updated_at: new Date().toISOString()
+    }];
+    const listAgentProfiles = async () => [];
+    const supabaseAdapter = {
+      upsertAgentProfile,
+      listAgentProfiles
+    } as unknown as SupabaseConsoleAdapter;
+    const baseUrl = await startTestServer({ supabaseAdapter });
+    const loginResponse = await login(baseUrl);
+    const cookie = loginResponse.headers.get('set-cookie') ?? '';
+    const loginBody = await loginResponse.json() as { csrfToken: string };
+    const baseHeaders = {
+      cookie,
+      origin: 'http://127.0.0.1:3000',
+      'content-type': 'application/json',
+      'x-nuga-mode': 'staging'
+    };
+
+    const denied = await fetch(`${baseUrl}/api/v1/agents/director`, {
+      method: 'PATCH',
+      headers: baseHeaders,
+      body: JSON.stringify({ avatar })
+    });
+    expect(denied.status).toBe(403);
+
+    const saved = await fetch(`${baseUrl}/api/v1/agents/director`, {
+      method: 'PATCH',
+      headers: { ...baseHeaders, 'x-csrf-token': loginBody.csrfToken },
+      body: JSON.stringify({ avatar })
+    });
+    expect(saved.status).toBe(200);
+    await expect(saved.json()).resolves.toMatchObject({ id: 'director', avatar });
   });
 
   it('requires the session CSRF token to log out', async () => {
