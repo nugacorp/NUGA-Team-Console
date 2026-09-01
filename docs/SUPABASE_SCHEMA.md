@@ -1,6 +1,6 @@
 # Esquema Supabase de NUGA Console
 
-**Estado:** diseño declarativo aprobado para revisión; no aplicado a una base remota.
+**Estado:** staging y producción lógica aplicados al proyecto Supabase gratuito.
 
 El archivo `supabase/schemas/nuga_console.sql` define la persistencia mínima de
 los datos que pertenecen a NUGA Console. No duplica tableros, tareas,
@@ -49,6 +49,25 @@ claves foráneas ni copias editables del Kanban.
    NUGA Console API continúa respondiendo sin persistencia Supabase.
 
 Production, Realtime, Storage y Supabase Auth permanecen fuera de alcance.
+
+## Aislamiento productivo de costo cero
+
+El límite gratuito impide crear un segundo proyecto. Producción usa el esquema
+independiente `nuga_console_production` dentro del mismo proyecto, sin copiar
+datos de staging. Esta separación es lógica, no física: ambos esquemas comparten
+la instancia y la clave secreta del proyecto.
+
+- staging exige `NUGA_SUPABASE_SCHEMA=nuga_console`;
+- production exige `NUGA_SUPABASE_SCHEMA=nuga_console_production`;
+- el servidor falla al arrancar si modo y esquema no coinciden;
+- ambos esquemas revocan todo acceso a `PUBLIC`, `anon` y `authenticated`;
+- producción inicia con cuatro tablas vacías, RLS habilitado y forzado;
+- `service_role` no recibe `DELETE` ni `TRUNCATE`;
+- ninguna clave Supabase se incluye en el bundle del navegador.
+
+Los archivos `nuga_console_production.sql` y
+`nuga_console_production_backend_access.sql` reflejan la estructura aplicada.
+MikroTik, RouterOS y MikroMCP permanecen fuera de esta capa de persistencia.
 
 ## Adaptador de backend
 
