@@ -1,24 +1,53 @@
 import '@testing-library/jest-dom';
 import { afterEach } from 'vitest';
 
-// Node 25+ defines an experimental global Web Storage accessor. Without
-// --localstorage-file that accessor can resolve to undefined and shadow the
-// fully functional JSDOM storage used by browser tests. Always bind the test
-// globals to JSDOM so results do not depend on the host Node configuration.
-if (typeof window !== 'undefined') {
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: window.localStorage
-  });
-  Object.defineProperty(globalThis, 'sessionStorage', {
-    configurable: true,
-    value: window.sessionStorage
-  });
+class MemoryStorage implements Storage {
+  private readonly values = new Map<string, string>();
+
+  get length() {
+    return this.values.size;
+  }
+
+  clear() {
+    this.values.clear();
+  }
+
+  getItem(key: string) {
+    return this.values.get(String(key)) ?? null;
+  }
+
+  key(index: number) {
+    return Array.from(this.values.keys())[index] ?? null;
+  }
+
+  removeItem(key: string) {
+    this.values.delete(String(key));
+  }
+
+  setItem(key: string, value: string) {
+    this.values.set(String(key), String(value));
+  }
+}
+
+// Node 25+ defines an experimental Web Storage accessor that can resolve to
+// undefined when no --localstorage-file is configured. Tests use isolated
+// in-memory implementations instead of depending on the host runtime.
+const testLocalStorage = new MemoryStorage();
+const testSessionStorage = new MemoryStorage();
+
+for (const [name, value] of [
+  ['localStorage', testLocalStorage],
+  ['sessionStorage', testSessionStorage]
+] as const) {
+  Object.defineProperty(globalThis, name, { configurable: true, value });
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, name, { configurable: true, value });
+  }
 }
 
 afterEach(() => {
-  localStorage.clear();
-  sessionStorage.clear();
+  testLocalStorage.clear();
+  testSessionStorage.clear();
 });
 
 // Polyfills and mocks for JSDOM
