@@ -19,7 +19,8 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export const ConfiguracionScreen: React.FC = () => {
-  const { settings, updateSettings, theme, toggleTheme, resetAllDemoData, addToast } = useApp();
+  const { settings, updateSettings, theme, toggleTheme, resetAllDemoData, appMode, serverStatus } = useApp();
+  const isDemo = appMode === 'demo';
 
   return (
     <div id="screen-configuracion" className="space-y-6 pb-12 animate-in fade-in duration-200">
@@ -33,7 +34,7 @@ export const ConfiguracionScreen: React.FC = () => {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-100">Configuración & Seguridad de la Consola</h2>
               <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
-                DEMO
+                {appMode.toUpperCase()}
               </span>
             </div>
             <p className="text-xs text-slate-400">
@@ -42,13 +43,13 @@ export const ConfiguracionScreen: React.FC = () => {
           </div>
         </div>
 
-        <button
+        {isDemo && <button
           onClick={resetAllDemoData}
           className="px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold text-xs flex items-center gap-2 transition-colors"
         >
           <RefreshCcw className="w-4 h-4" />
           <span>Restablecer Datos DEMO</span>
-        </button>
+        </button>}
       </div>
 
       {/* Grid: Settings Sections */}
@@ -121,47 +122,47 @@ export const ConfiguracionScreen: React.FC = () => {
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
             <Cpu className="w-5 h-5 text-sky-400" />
-            <h3 className="text-sm font-bold text-slate-100">Estado de Adaptadores & Servicios (DEMO)</h3>
+            <h3 className="text-sm font-bold text-slate-100">Estado real de adaptadores & servicios</h3>
           </div>
 
           <div className="space-y-3 text-xs">
             <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between">
               <div>
                 <span className="font-bold text-slate-200 block">Hermes Multi-Agent Engine</span>
-                <span className="text-[11px] text-slate-400">Motor orquestador v2.4</span>
+                <span className="text-[11px] text-slate-400">Estado informado por el backend</span>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-[10px]">
-                ONLINE (SIMULADO)
+                {serverStatus?.hermes === 'available' ? 'DISPONIBLE' : serverStatus?.hermes === 'degraded' ? 'DEGRADADO' : 'NO CONECTADO'}
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between">
               <div>
                 <span className="font-bold text-slate-200 block">Servidor MCP & Protocolos</span>
-                <span className="text-[11px] text-slate-400">Sandbox aislado de herramientas</span>
+                <span className="text-[11px] text-slate-400">No habilitado en esta fase</span>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-[10px]">
-                CONECTADO
+                NO CONECTADO
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between">
               <div>
                 <span className="font-bold text-slate-200 block">Adaptador RouterOS v7</span>
-                <span className="text-[11px] text-slate-400">6 routers en telemetría mock</span>
+                <span className="text-[11px] text-slate-400">Sin credenciales ni conexión MikroTik</span>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 font-semibold text-[10px]">
-                SANDBOX ACTIVO
+                DESCONECTADO
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between">
               <div>
                 <span className="font-bold text-slate-200 block">Higgsfield Media Engine</span>
-                <span className="text-[11px] text-slate-400">Generación de video y storyboards</span>
+                <span className="text-[11px] text-slate-400">Capacidad no conectada</span>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 font-semibold text-[10px]">
-                MOCK SANDBOX
+                NO CONECTADO
               </span>
             </div>
           </div>
@@ -190,7 +191,7 @@ export const ConfiguracionScreen: React.FC = () => {
         </div>
 
         {/* Card 4: Data Persistence & Reset */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+        {isDemo && <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
             <Database className="w-5 h-5 text-rose-400" />
             <h3 className="text-sm font-bold text-slate-100">Almacenamiento Local & Persistencia</h3>
@@ -212,7 +213,7 @@ export const ConfiguracionScreen: React.FC = () => {
               Restablecer
             </button>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );
