@@ -59,6 +59,27 @@ describe('Supabase server-only console adapter', () => {
     expect(String(url)).toContain('limit=500');
   });
 
+  it('upserts only allowlisted profile configuration through the backend', async () => {
+    const request = vi.fn<SupabaseFetch>(async () =>
+      new Response('[{"role":"director","avatar_data_url":""}]', { status: 200 })
+    );
+
+    await adapterWith(request).upsertAgentProfile({
+      role: 'director',
+      avatar_data_url: '',
+      autonomy_level: 'supervisado'
+    });
+
+    const [url, init] = request.mock.calls[0];
+    expect(String(url)).toContain('/rest/v1/agent_profiles');
+    expect(String(url)).toContain('on_conflict=role');
+    expect(init?.method).toBe('POST');
+    expect(() => adapterWith(request).upsertAgentProfile({
+      role: 'director',
+      password: 'forbidden'
+    })).toThrow(SupabaseConsoleError);
+  });
+
   it('never offers update or delete operations for audit events', () => {
     const adapter = adapterWith(vi.fn<SupabaseFetch>());
     expect('update' in adapter).toBe(false);
