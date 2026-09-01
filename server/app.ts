@@ -26,6 +26,7 @@ import {
 } from './contracts';
 import { HermesReadOnlyAdapter, HermesReadOnlyError } from './hermesReadOnlyAdapter';
 import { SupabaseConsoleAdapter, SupabaseConsoleError } from './supabaseConsoleAdapter';
+import { SERVER_SETTINGS, TEAM_PROFILES } from './readModels';
 
 const API_PREFIX = '/api/v1';
 
@@ -250,7 +251,13 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
     }
   };
 
-  app.get(`${API_PREFIX}/agents`, requireSession, hermesUnavailable);
+  app.get(`${API_PREFIX}/agents`, requireSession, (_request, response) => {
+    response.status(200).json(TEAM_PROFILES);
+  });
+  app.get(`${API_PREFIX}/agents/:role`, requireSession, (request, response) => {
+    const profile = TEAM_PROFILES.find(candidate => candidate.id === request.params.role);
+    response.status(profile ? 200 : 404).json(profile ?? apiError('NOT_FOUND', 'Perfil no encontrado.'));
+  });
   app.get(`${API_PREFIX}/hermes/boards`, requireSession, hermesRead(() => hermesAdapter!.listBoards()));
   app.get(`${API_PREFIX}/hermes/tasks`, requireSession, hermesRead(() => hermesAdapter!.listTasks()));
   app.get(`${API_PREFIX}/hermes/boards/:board/tasks/:id`, requireSession, (request, response) =>
@@ -312,6 +319,30 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   app.post(`${API_PREFIX}/audit/events`, requireSession, requireCsrf, (request, response) =>
     consoleOperation(() => supabaseAdapter!.create('audit_events', request.body as Record<string, unknown>))(request, response)
   );
+
+  // Explicit read models for modules that are not connected yet. Returning an
+  // authenticated empty collection prevents the browser from inventing DEMO
+  // fixtures while keeping every external integration fail-closed.
+  [
+    `${API_PREFIX}/projects`,
+    `${API_PREFIX}/wisp/towers`,
+    `${API_PREFIX}/wisp/routers`,
+    `${API_PREFIX}/wisp/links`,
+    `${API_PREFIX}/wisp/incidents`,
+    `${API_PREFIX}/marketing/campaigns`,
+    `${API_PREFIX}/marketing/media-assets`,
+    `${API_PREFIX}/conversations`,
+    `${API_PREFIX}/admin/items`,
+    `${API_PREFIX}/notifications`
+  ].forEach(path => {
+    app.get(path, requireSession, (_request, response) => {
+      response.status(200).json([]);
+    });
+  });
+
+  app.get(`${API_PREFIX}/config/settings`, requireSession, (_request, response) => {
+    response.status(200).json(SERVER_SETTINGS);
+  });
 
   app.use(API_PREFIX, (_request, response) => {
     response.status(404).json(
