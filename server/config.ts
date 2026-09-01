@@ -14,6 +14,7 @@ export interface ServerConfig {
   supabaseEnabled: boolean;
   supabaseUrl: string;
   supabaseSecretKey: string;
+  supabaseSchema: 'nuga_console' | 'nuga_console_production';
 }
 
 export class ServerConfigurationError extends Error {
@@ -100,6 +101,10 @@ export function loadServerConfig(
   const supabaseEnabled = environment.NUGA_SUPABASE_ENABLED === 'true';
   const supabaseUrl = environment.NUGA_SUPABASE_URL?.trim() ?? '';
   const supabaseSecretKey = environment.NUGA_SUPABASE_SECRET_KEY?.trim() ?? '';
+  const expectedSupabaseSchema = environment.NUGA_SERVER_MODE === 'production'
+    ? 'nuga_console_production'
+    : 'nuga_console';
+  const supabaseSchema = environment.NUGA_SUPABASE_SCHEMA?.trim() ?? '';
   if (supabaseEnabled) {
     let parsedUrl: URL;
     try {
@@ -117,6 +122,11 @@ export function loadServerConfig(
         'NUGA_SUPABASE_SECRET_KEY debe contener una clave secreta moderna de Supabase.'
       );
     }
+    if (supabaseSchema !== expectedSupabaseSchema) {
+      throw new ServerConfigurationError(
+        `NUGA_SUPABASE_SCHEMA debe ser ${expectedSupabaseSchema} en modo ${environment.NUGA_SERVER_MODE}.`
+      );
+    }
   }
 
   return {
@@ -132,6 +142,7 @@ export function loadServerConfig(
     hermesBoards,
     supabaseEnabled,
     supabaseUrl,
-    supabaseSecretKey
+    supabaseSecretKey,
+    supabaseSchema: expectedSupabaseSchema
   };
 }
