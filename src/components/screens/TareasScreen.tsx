@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   KanbanSquare,
   List,
@@ -34,6 +34,7 @@ export const TareasScreen: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [commentInput, setCommentInput] = useState<string>('');
+  const detailRef = useRef<HTMLDivElement>(null);
 
   const activeTask = tasks.find(t => t.id === selectedTaskId) || tasks[0];
 
@@ -81,6 +82,14 @@ export const TareasScreen: React.FC = () => {
     if (!commentInput.trim() || !activeTask) return;
     addTaskComment(activeTask.id, commentInput);
     setCommentInput('');
+  };
+
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    window.requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      detailRef.current?.focus({ preventScroll: true });
+    });
   };
 
   return (
@@ -208,7 +217,16 @@ export const TareasScreen: React.FC = () => {
                       <div
                         key={task.id}
                         id={`task-card-${task.id}`}
-                        onClick={() => setSelectedTaskId(task.id)}
+                        onClick={() => handleTaskSelect(task.id)}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            handleTaskSelect(task.id);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Abrir detalle real de ${task.title}`}
                         className={`p-3 rounded-lg border transition-all cursor-pointer space-y-2 ${
                           isSelected
                             ? 'bg-[#0A141D] border-blue-500 shadow-md ring-1 ring-blue-500/40'
@@ -293,7 +311,7 @@ export const TareasScreen: React.FC = () => {
                   return (
                     <tr
                       key={t.id}
-                      onClick={() => setSelectedTaskId(t.id)}
+                      onClick={() => handleTaskSelect(t.id)}
                       className="hover:bg-[#0A141D] cursor-pointer transition-colors"
                     >
                       <td className="p-3.5 font-mono font-bold text-blue-400">{t.code}</td>
@@ -336,7 +354,12 @@ export const TareasScreen: React.FC = () => {
 
       {/* Selected Task Detail Bento Card */}
       {activeTask && (
-        <div className="p-5 rounded-xl bg-[#111D27] border border-[#1E293B] shadow-xl space-y-5">
+        <div
+          ref={detailRef}
+          tabIndex={-1}
+          aria-live="polite"
+          className="scroll-mt-24 p-5 rounded-xl bg-[#111D27] border border-blue-500/40 shadow-xl space-y-5 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+        >
           {taskDetailLoading && appMode !== 'demo' && (
             <div className="text-xs text-blue-300 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
               Consultando detalle read-only en Hermes…
