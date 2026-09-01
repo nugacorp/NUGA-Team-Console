@@ -42,11 +42,13 @@ describe('Production screens with disconnected data sources', () => {
       conversations: [],
       updateAgent: vi.fn(),
       setCurrentScreen: vi.fn(),
-      setSelectedAgentId: vi.fn()
+      setSelectedAgentId: vi.fn(),
+      appMode: 'production'
     } as unknown as ReturnType<typeof useApp>);
 
     render(<EquipoIAScreen />);
 
     expect(screen.getByText('Perfiles no disponibles')).toBeInTheDocument();
+    expect(screen.getAllByText(/PRODUCCIÓN/).length).toBeGreaterThan(0);
   });
 });

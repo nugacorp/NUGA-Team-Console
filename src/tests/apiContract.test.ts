@@ -12,10 +12,29 @@ import {
   toDecisionActionRequest
 } from '../providers/api/contracts';
 import { checkServerHealth } from '../services/healthCheckService';
+import { setApiCsrfToken } from '../auth/apiCsrf';
 
 describe('NUGA API v1 staging boundary', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    setApiCsrfToken();
+  });
+
+  it('keeps CSRF in memory and attaches it only to mutations', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue(
+      new Response('{}', { status: 200 })
+    );
+    setApiCsrfToken('csrf-in-memory');
+    const client = new HttpClient({ baseUrl: '/api', mode: 'production' });
+
+    await client.request('/api/v1/agents/director', {
+      method: 'PATCH',
+      body: JSON.stringify({ avatar: '' })
+    });
+
+    const request = fetchSpy.mock.calls[0][1] as RequestInit;
+    expect(request.headers).toMatchObject({ 'X-CSRF-Token': 'csrf-in-memory' });
+    expect(localStorage.length).toBe(0);
   });
 
   it('keeps DEMO providers and health checks completely offline', async () => {

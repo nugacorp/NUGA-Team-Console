@@ -30,7 +30,8 @@ export const OperacionesWispScreen: React.FC = () => {
     setCurrentScreen,
     setSelectedDecisionId,
     openModal,
-    addToast
+    addToast,
+    appMode
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'routers' | 'towers' | 'links' | 'incidents'>('routers');
@@ -40,6 +41,7 @@ export const OperacionesWispScreen: React.FC = () => {
   const [isAuditing, setIsAuditing] = useState(false);
   const [showBackupProposalModal, setShowBackupProposalModal] = useState(false);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const modeLabel = appMode === 'demo' ? 'DEMO' : appMode === 'staging' ? 'STAGING' : 'PRODUCCIÓN';
 
   useEffect(() => {
     setSelectedRouter(current => {
@@ -52,6 +54,7 @@ export const OperacionesWispScreen: React.FC = () => {
   }, [routers, selectedRouterId]);
 
   const handleSimulateAudit = () => {
+    if (!selectedRouter || appMode !== 'demo') return;
     setIsAuditing(true);
     setTimeout(() => {
       setIsAuditing(false);
@@ -95,7 +98,7 @@ export const OperacionesWispScreen: React.FC = () => {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-white">Operaciones WISP & Análisis MikroTik</h2>
               <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">
-                DEMO
+                {modeLabel} · MIKROTIK DESCONECTADO
               </span>
             </div>
             <p className="text-xs text-[#94A3B8]">
@@ -109,8 +112,8 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-run-mikrotik-audit"
             onClick={handleSimulateAudit}
-            disabled={isAuditing || !selectedRouter}
-            className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-green-950/40 disabled:opacity-50 cursor-pointer"
+            disabled={isAuditing || !selectedRouter || appMode !== 'demo'}
+            className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-green-950/40 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <ShieldAlert className="w-3.5 h-3.5" />
             <span>{isAuditing ? 'Analizando...' : 'Analizar'}</span>
@@ -119,8 +122,8 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-prepare-backup-proposal"
             onClick={() => setShowBackupProposalModal(true)}
-            disabled={!selectedRouter}
-            className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            disabled={!selectedRouter || appMode !== 'demo'}
+            className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Preparar propuesta</span>
@@ -129,8 +132,8 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-request-dryrun"
             onClick={handleRequestDryRun}
-            disabled={!selectedRouter}
-            className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            disabled={!selectedRouter || appMode !== 'demo'}
+            className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <Play className="w-3.5 h-3.5" />
             <span>Solicitar dry-run</span>
@@ -139,8 +142,8 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-send-approval"
             onClick={handleSendToApproval}
-            disabled={!selectedRouter}
-            className="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            disabled={!selectedRouter || appMode !== 'demo'}
+            className="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Enviar a aprobación</span>
@@ -149,8 +152,8 @@ export const OperacionesWispScreen: React.FC = () => {
           <button
             id="btn-view-evidence"
             onClick={() => setShowEvidenceModal(true)}
-            disabled={!selectedRouter}
-            className="px-3 py-1.5 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#E0E7FF] border border-[#1E293B] font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            disabled={!selectedRouter || appMode !== 'demo'}
+            className="px-3 py-1.5 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#E0E7FF] border border-[#1E293B] font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5 text-slate-400" />
             <span>Ver evidencia</span>
@@ -258,7 +261,7 @@ export const OperacionesWispScreen: React.FC = () => {
                         {router.id}
                       </span>
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        DEMO
+                        {modeLabel}
                       </span>
                       <span className="text-[11px] font-mono text-blue-400 font-semibold">{ipDisplay}</span>
                     </div>
@@ -297,7 +300,7 @@ export const OperacionesWispScreen: React.FC = () => {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-mono font-bold text-blue-400">{selectedRouter.id}</span>
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      DEMO
+                      {modeLabel}
                     </span>
                     <span className="text-xs text-[#64748B] font-mono">
                       {selectedRouter.interfaces?.[0]?.ipAddress || (selectedRouter as any).ip || '192.0.2.1'}
@@ -430,7 +433,7 @@ export const OperacionesWispScreen: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-mono font-bold text-blue-400">{tower.id}</span>
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      DEMO
+                      {modeLabel}
                     </span>
                   </div>
                   <span
@@ -482,7 +485,7 @@ export const OperacionesWispScreen: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-mono font-bold text-blue-400">{link.id}</span>
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    DEMO
+                    {modeLabel}
                   </span>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
@@ -526,7 +529,7 @@ export const OperacionesWispScreen: React.FC = () => {
               className="px-3.5 py-2 rounded-lg bg-[#0A141D] hover:bg-white/5 text-[#E0E7FF] border border-[#1E293B] font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4 text-green-400" />
-              <span>Nuevo Incidente DEMO</span>
+                  <span>Nuevo incidente {modeLabel}</span>
             </button>
           </div>
 
@@ -541,7 +544,7 @@ export const OperacionesWispScreen: React.FC = () => {
                     {inc.code}
                   </span>
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    DEMO
+                    {modeLabel}
                   </span>
                   <h4 className="text-sm font-bold text-white">{inc.title}</h4>
                 </div>

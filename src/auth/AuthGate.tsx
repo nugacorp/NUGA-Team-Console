@@ -3,6 +3,7 @@ import { KeyRound, LoaderCircle, LockKeyhole, ServerOff, ShieldCheck } from 'luc
 import { getAppConfig } from '../config/appConfig';
 import { User } from '../types';
 import { AuthClient, AuthClientError, AuthSession } from './authClient';
+import { setApiCsrfToken } from './apiCsrf';
 
 interface AuthContextValue {
   sessionUser: User | null;
@@ -120,6 +121,11 @@ export const AuthGate: React.FC<{ children: ReactNode }> = ({ children }) => {
   useEffect(() => {
     if (!config.isDemo) void restore();
   }, [config, restore]);
+
+  useEffect(() => {
+    setApiCsrfToken(session?.csrfToken);
+    return () => setApiCsrfToken();
+  }, [session]);
 
   useEffect(() => {
     if (!session) return;

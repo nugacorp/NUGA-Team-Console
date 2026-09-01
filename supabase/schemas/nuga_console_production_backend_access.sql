@@ -5,7 +5,8 @@
 grant usage on schema nuga_console_production to service_role;
 
 grant select, insert, update
-  on nuga_console_production.task_extensions,
+  on nuga_console_production.agent_profiles,
+     nuga_console_production.task_extensions,
      nuga_console_production.decisions,
      nuga_console_production.deliverables
   to service_role;

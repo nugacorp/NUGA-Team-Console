@@ -174,7 +174,7 @@ interface AppContextType {
   createCampaign: (campaign: any) => void;
   createAdminItem: (item: any) => void;
   updateDeliverableStatus: (id: string, status: Deliverable['status']) => void;
-  updateAgent: (agentId: string, partial: Partial<AgentProfile>) => void;
+  updateAgent: (agentId: string, partial: Partial<AgentProfile>) => Promise<boolean>;
   createNotification: (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => void;
   deleteNotification: (id: string) => void;
   clearAllNotifications: () => void;
@@ -455,14 +455,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const res = await providers.agents.updateAgent(agentId, partial);
     if (res.data) {
       setAgents(prev => prev.map(a => (a.id === agentId ? res.data! : a)));
+      const auditRes = await providers.audit.getAuditEvents();
+      if (auditRes.data) setAuditEvents(auditRes.data);
+      addToast({
+        type: 'success',
+        title: 'Perfil actualizado',
+        message: `La configuración de ${agentId} fue guardada.`
+      });
+      return true;
     }
-    const auditRes = await providers.audit.getAuditEvents();
-    if (auditRes.data) setAuditEvents(auditRes.data);
     addToast({
-      type: 'success',
-      title: 'Agente Actualizado',
-      message: `Configuración de autonomía y herramientas para ${agentId} guardada.`
+      type: 'error',
+      title: 'No se pudo actualizar el perfil',
+      message: res.error ?? 'El servidor rechazó la actualización.'
     });
+    return false;
   }, [addToast, providers]);
 
   const createTask = useCallback(async (taskData: any) => {
