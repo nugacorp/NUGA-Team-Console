@@ -16,12 +16,13 @@ export const useAuth = () => useContext(AuthContext);
 type AuthState = 'checking' | 'signed_out' | 'authenticated' | 'unavailable' | 'expired';
 
 const LoginScreen: React.FC<{
+  mode: 'staging' | 'production';
   state: AuthState;
   busy: boolean;
   error?: string;
   onLogin: (username: string, password: string) => Promise<void>;
   onRetry: () => Promise<void>;
-}> = ({ state, busy, error, onLogin, onRetry }) => {
+}> = ({ mode, state, busy, error, onLogin, onRetry }) => {
   const [username, setUsername] = useState('ramiro');
   const [password, setPassword] = useState('');
 
@@ -39,7 +40,9 @@ const LoginScreen: React.FC<{
             <ShieldCheck className="h-7 w-7" />
           </div>
           <div>
-            <p className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">Staging seguro</p>
+            <p className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
+              {mode === 'production' ? 'Producción privada' : 'Staging seguro'}
+            </p>
             <h1 className="mt-1 text-xl font-bold text-white">NUGA Team Console</h1>
             <p className="mt-1 text-sm text-slate-400">Acceso exclusivo del propietario</p>
           </div>
@@ -101,7 +104,7 @@ export const AuthGate: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
   const restore = useCallback(async () => {
-    if (config.isDemo || config.isProduction) return;
+    if (config.isDemo) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -115,7 +118,7 @@ export const AuthGate: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, [applyFailure, client, config]);
 
   useEffect(() => {
-    if (config.isStaging) void restore();
+    if (!config.isDemo) void restore();
   }, [config, restore]);
 
   useEffect(() => {
@@ -157,16 +160,12 @@ export const AuthGate: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [client, session]);
 
-  if (config.isProduction) {
-    return <LoginScreen state="signed_out" busy={false} error="El frontend de producción permanece bloqueado hasta su autorización y despliegue explícitos." onLogin={async () => {}} onRetry={async () => {}} />;
-  }
-
-  if (config.isStaging && state === 'checking') {
+  if (!config.isDemo && state === 'checking') {
     return <div role="status" className="min-h-screen bg-[#050B10] text-slate-300 flex items-center justify-center gap-3"><LoaderCircle className="h-5 w-5 animate-spin text-blue-400" /> Restaurando sesión segura…</div>;
   }
 
-  if (config.isStaging && state !== 'authenticated') {
-    return <LoginScreen state={state} busy={busy} error={error} onLogin={login} onRetry={restore} />;
+  if (!config.isDemo && state !== 'authenticated') {
+    return <LoginScreen mode={config.isProduction ? 'production' : 'staging'} state={state} busy={busy} error={error} onLogin={login} onRetry={restore} />;
   }
 
   return <AuthContext.Provider value={{ sessionUser: session?.user ?? null, logout }}>{children}</AuthContext.Provider>;
