@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useApp, ScreenId } from '../../context/AppContext';
 import { APP_INFO } from '../../constants';
+import { countOpenTasks } from '../../utils/taskMetrics';
 
 interface NavItem {
   id: ScreenId;
@@ -60,7 +61,7 @@ export const Sidebar: React.FC = () => {
 
   const pendingDecisionsCount = (decisions || []).filter(d => d.status === 'pending').length;
   const criticalDecisionsCount = (decisions || []).filter(d => d.status === 'pending' && (d.risk === 'critical' || d.risk === 'high')).length;
-  const activeTasksCount = (tasks || []).filter(t => t.status === 'in_progress' || t.status === 'review').length;
+  const openTasksCount = countOpenTasks(tasks);
   const openIncidentsCount = (incidents || []).filter(i => i.status === 'open' || i.status === 'investigating' || i.status === 'mitigating').length;
 
   const navSections: NavSection[] = [
@@ -86,7 +87,7 @@ export const Sidebar: React.FC = () => {
           id: 'tareas',
           label: 'Tareas',
           icon: KanbanSquare,
-          badge: activeTasksCount > 0 ? activeTasksCount : undefined,
+          badge: openTasksCount > 0 ? openTasksCount : undefined,
           badgeType: 'info'
         },
         { id: 'proyectos', label: 'Proyectos', icon: FolderKanban },
