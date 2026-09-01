@@ -7,10 +7,31 @@ const backendAccess = readFileSync(
   resolve(process.cwd(), 'supabase/schemas/nuga_console_backend_access.sql'),
   'utf8'
 );
+const productionSchema = readFileSync(
+  resolve(process.cwd(), 'supabase/schemas/nuga_console_production.sql'),
+  'utf8'
+);
+const productionBackendAccess = readFileSync(
+  resolve(process.cwd(), 'supabase/schemas/nuga_console_production_backend_access.sql'),
+  'utf8'
+);
 
 const tables = ['task_extensions', 'decisions', 'deliverables', 'audit_events'] as const;
 
 describe('Supabase console-owned schema baseline', () => {
+  it('defines a separate fail-closed production schema', () => {
+    for (const table of tables) {
+      expect(productionSchema).toContain(`create table nuga_console_production.${table}`);
+      expect(productionSchema).toContain(
+        `alter table nuga_console_production.${table} force row level security`
+      );
+    }
+    expect(productionSchema).toContain(
+      'revoke all on schema nuga_console_production from public, anon, authenticated'
+    );
+    expect(productionBackendAccess).toContain('revoke delete, truncate');
+    expect(productionBackendAccess).toContain('from service_role');
+  });
   it('keeps all console tables in the private nuga_console schema', () => {
     for (const table of tables) {
       expect(schema).toContain(`create table nuga_console.${table}`);
