@@ -27,6 +27,7 @@ import {
 import { HermesReadOnlyAdapter, HermesReadOnlyError } from './hermesReadOnlyAdapter';
 import { SupabaseConsoleAdapter, SupabaseConsoleError } from './supabaseConsoleAdapter';
 import { SERVER_SETTINGS, TEAM_PROFILES } from './readModels';
+import type { AgentProfile } from '../src/types';
 
 const API_PREFIX = '/api/v1';
 
@@ -251,12 +252,101 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
     }
   };
 
-  app.get(`${API_PREFIX}/agents`, requireSession, (_request, response) => {
-    response.status(200).json(TEAM_PROFILES);
+  app.get(`${API_PREFIX}/agents`, requireSession, async (_request, response) => {
+    if (!supabaseAdapter) {
+      response.status(200).json(TEAM_PROFILES);
+      return;
+    }
+    try {
+      const overrides = await supabaseAdapter.listAgentProfiles();
+      const profiles = TEAM_PROFILES.map(profile => {
+        const override = overrides.find(candidate => candidate.role === profile.id);
+        if (!override) return profile;
+        return {
+          ...profile,
+          avatar: typeof override.avatar_data_url === 'string' ? override.avatar_data_url : profile.avatar,
+          autonomyLevel: typeof override.autonomy_level === 'string'
+            ? override.autonomy_level as AgentProfile['autonomyLevel']
+            : profile.autonomyLevel,
+          systemInstructions: typeof override.system_instructions === 'string'
+            ? override.system_instructions
+            : profile.systemInstructions
+        };
+      });
+      response.status(200).json(profiles);
+    } catch {
+      response.status(200).json(TEAM_PROFILES);
+    }
   });
   app.get(`${API_PREFIX}/agents/:role`, requireSession, (request, response) => {
     const profile = TEAM_PROFILES.find(candidate => candidate.id === request.params.role);
     response.status(profile ? 200 : 404).json(profile ?? apiError('NOT_FOUND', 'Perfil no encontrado.'));
+  });
+  app.patch(`${API_PREFIX}/agents/:role`, requireSession, requireCsrf, async (request, response) => {
+    const baseProfile = TEAM_PROFILES.find(candidate => candidate.id === request.params.role);
+    if (!baseProfile) {
+      response.status(404).json(apiError('NOT_FOUND', 'Perfil no encontrado.'));
+      return;
+    }
+    if (!supabaseAdapter) {
+      response.status(503).json(apiError('SUPABASE_NOT_CONNECTED', 'Supabase no está conectado.'));
+      return;
+    }
+
+    const body = request.body as Record<string, unknown>;
+    const allowedKeys = new Set(['avatar', 'autonomyLevel', 'systemInstructions']);
+    if (Object.keys(body).some(key => !allowedKeys.has(key))) {
+      response.status(400).json(apiError('INVALID_PROFILE', 'La actualización contiene campos no permitidos.'));
+      return;
+    }
+
+    const avatar = body.avatar;
+    if (avatar !== undefined && (
+      typeof avatar !== 'string' ||
+      avatar.length > 180_000 ||
+      (avatar !== '' && !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(avatar))
+    )) {
+      response.status(400).json(apiError('INVALID_AVATAR', 'La imagen debe ser PNG, JPEG o WebP y no exceder 180 KB.'));
+      return;
+    }
+
+    const autonomyLevel = body.autonomyLevel;
+    if (autonomyLevel !== undefined && !['supervisado', 'semi-autonomo', 'autonomo'].includes(String(autonomyLevel))) {
+      response.status(400).json(apiError('INVALID_PROFILE', 'Nivel de autonomía inválido.'));
+      return;
+    }
+
+    const systemInstructions = body.systemInstructions;
+    if (systemInstructions !== undefined && (
+      typeof systemInstructions !== 'string' ||
+      systemInstructions.trim().length < 1 ||
+      systemInstructions.length > 4_000
+    )) {
+      response.status(400).json(apiError('INVALID_PROFILE', 'Las instrucciones deben contener entre 1 y 4000 caracteres.'));
+      return;
+    }
+
+    try {
+      const rows = await supabaseAdapter.upsertAgentProfile({
+        role: baseProfile.id,
+        ...(avatar !== undefined ? { avatar_data_url: avatar } : {}),
+        ...(autonomyLevel !== undefined ? { autonomy_level: autonomyLevel } : {}),
+        ...(systemInstructions !== undefined ? { system_instructions: systemInstructions } : {})
+      });
+      const saved = rows[0] ?? {};
+      response.status(200).json({
+        ...baseProfile,
+        avatar: typeof saved.avatar_data_url === 'string' ? saved.avatar_data_url : baseProfile.avatar,
+        autonomyLevel: typeof saved.autonomy_level === 'string' ? saved.autonomy_level : baseProfile.autonomyLevel,
+        systemInstructions: typeof saved.system_instructions === 'string' ? saved.system_instructions : baseProfile.systemInstructions
+      });
+    } catch (error) {
+      const denied = error instanceof SupabaseConsoleError && error.code === 'DENIED';
+      response.status(denied ? 400 : 503).json(apiError(
+        denied ? 'INVALID_PROFILE' : 'PROFILE_STORAGE_UNAVAILABLE',
+        denied ? 'El perfil fue rechazado.' : 'No fue posible guardar el perfil.'
+      ));
+    }
   });
   app.get(`${API_PREFIX}/hermes/boards`, requireSession, hermesRead(() => hermesAdapter!.listBoards()));
   app.get(`${API_PREFIX}/hermes/tasks`, requireSession, hermesRead(() => hermesAdapter!.listTasks()));
