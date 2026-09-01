@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Deliverable } from '../../types';
-import { PDFExportService } from '../../utils/pdfExportService';
 
 export const EntregablesScreen: React.FC = () => {
   const {
@@ -98,9 +97,10 @@ export const EntregablesScreen: React.FC = () => {
   };
 
   // PDF Export Handlers
-  const handleExportSinglePDF = () => {
+  const handleExportSinglePDF = async () => {
     try {
       setIsExporting(true);
+      const { PDFExportService } = await import('../../utils/pdfExportService');
       PDFExportService.exportDeliverablePDF(activeDeliverable, activeProject);
       addToast({
         type: 'success',
@@ -119,9 +119,10 @@ export const EntregablesScreen: React.FC = () => {
     }
   };
 
-  const handleExportDossierPDF = () => {
+  const handleExportDossierPDF = async () => {
     try {
       setIsExporting(true);
+      const { PDFExportService } = await import('../../utils/pdfExportService');
       PDFExportService.exportPortfolioReportPDF(deliverables, projects);
       addToast({
         type: 'success',
