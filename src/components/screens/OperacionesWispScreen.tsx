@@ -42,6 +42,7 @@ export const OperacionesWispScreen: React.FC = () => {
   const [showBackupProposalModal, setShowBackupProposalModal] = useState(false);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const modeLabel = appMode === 'demo' ? 'DEMO' : appMode === 'staging' ? 'STAGING' : 'PRODUCCIÓN';
+  const isDemoBuild = import.meta.env.VITE_APP_MODE === 'demo';
 
   useEffect(() => {
     setSelectedRouter(current => {
@@ -54,14 +55,14 @@ export const OperacionesWispScreen: React.FC = () => {
   }, [routers, selectedRouterId]);
 
   const handleSimulateAudit = () => {
-    if (!selectedRouter || appMode !== 'demo') return;
+    if (!selectedRouter || !isDemoBuild) return;
     setIsAuditing(true);
     setTimeout(() => {
       setIsAuditing(false);
       addToast({
         type: 'warning',
-        title: 'Análisis MikroTik DEMO Finalizado',
-        message: 'Escaneo simulado completado en 6 routers. 1 hallazgo crítico detectado en EDGE-DEMO-01 (Winbox WAN).'
+        title: 'Análisis local finalizado',
+        message: 'El análisis local de demostración terminó sin modificar dispositivos.'
       });
     }, 1000);
   };
@@ -337,7 +338,7 @@ export const OperacionesWispScreen: React.FC = () => {
                     <div
                       key={idx}
                       className={`p-2.5 rounded-lg border text-xs ${
-                        p.port === 8291 && (selectedRouter.identity === 'EDGE-DEMO-01' || selectedRouter.id === 'router-edge-01' || selectedRouter.id === 'EDGE-DEMO-01')
+                        p.port === 8291
                           ? 'bg-rose-950/40 border-rose-500/50 text-rose-200'
                           : 'bg-[#0A141D] border-[#1E293B] text-[#E0E7FF]'
                       }`}
@@ -392,24 +393,6 @@ export const OperacionesWispScreen: React.FC = () => {
                 )}
               </div>
 
-              {/* Quick Remediate DEC-001 button if EDGE-DEMO-01 */}
-              {(selectedRouter.identity === 'EDGE-DEMO-01' || selectedRouter.id === 'router-edge-01' || selectedRouter.id === 'EDGE-DEMO-01') && (
-                <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-xs font-bold text-orange-200">Decisión DEC-001 Preparada</h4>
-                    <p className="text-xs text-[#94A3B8]">Aislar Winbox en ether1-WAN a la VPN WireGuard de gestión</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedDecisionId('dec-001');
-                      setCurrentScreen('decisiones');
-                    }}
-                    className="px-3.5 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-black font-bold text-xs shrink-0 transition-colors cursor-pointer"
-                  >
-                    Aprobar en Decisiones
-                  </button>
-                </div>
-              )}
               </div>
             ) : (
               <div className="p-5 rounded-xl bg-[#111D27] border border-[#1E293B] text-xs text-[#94A3B8]">
