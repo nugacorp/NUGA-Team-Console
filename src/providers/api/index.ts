@@ -246,7 +246,87 @@ export class ApiTasksProvider implements TasksProvider {
   }
 
   async getTaskById(id: string): Promise<ProviderResult<Task | null>> {
-    return this.client.request<Task | null>(`/api/v1/tasks/${id}`);
+    const separator = id.indexOf(':');
+    if (separator < 1 || separator === id.length - 1) {
+      return { status: 'error', error: 'Identificador Hermes inválido.', isDemo: false };
+    }
+    const board = id.slice(0, separator);
+    const taskId = id.slice(separator + 1);
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(board) || !/^[A-Za-z0-9_-]{1,128}$/.test(taskId)) {
+      return { status: 'error', error: 'Identificador Hermes fuera del alcance permitido.', isDemo: false };
+    }
+    const result = await this.client.request<unknown>(
+      `/api/v1/hermes/boards/${encodeURIComponent(board)}/tasks/${encodeURIComponent(taskId)}`
+    );
+    if (result.status !== 'success') return result as ProviderResult<Task | null>;
+    if (!result.data || typeof result.data !== 'object') {
+      return { status: 'error', error: 'Hermes devolvió un detalle inválido.', isDemo: false };
+    }
+    const detail = result.data as Record<string, unknown>;
+    const mapped = mapHermesTask(detail.task);
+    if (!mapped) {
+      return { status: 'error', error: 'Hermes devolvió una tarea incompleta.', isDemo: false };
+    }
+    const epoch = (value: unknown) => typeof value === 'number' && Number.isFinite(value)
+      ? new Date(value * 1000).toISOString()
+      : new Date(0).toISOString();
+    const comments = Array.isArray(detail.comments) ? detail.comments.flatMap((value, index) => {
+      if (!value || typeof value !== 'object') return [];
+      const item = value as Record<string, unknown>;
+      if (typeof item.author !== 'string' || typeof item.body !== 'string') return [];
+      return [{
+        id: `${mapped.id}:comment:${index}`,
+        authorName: item.author,
+        timestamp: epoch(item.createdAt),
+        text: item.body,
+        isDemo: false
+      } satisfies TaskComment];
+    }) : [];
+    const events = Array.isArray(detail.events) ? detail.events.flatMap((value, index) => {
+      if (!value || typeof value !== 'object') return [];
+      const item = value as Record<string, unknown>;
+      if (typeof item.kind !== 'string') return [];
+      return [{
+        id: `${mapped.id}:event:${index}`,
+        kind: item.kind,
+        timestamp: epoch(item.createdAt),
+        ...(typeof item.runId === 'string' ? { runId: item.runId } : {})
+      }];
+    }) : [];
+    const runs = Array.isArray(detail.runs) ? detail.runs.flatMap((value, index) => {
+      if (!value || typeof value !== 'object') return [];
+      const item = value as Record<string, unknown>;
+      const id = typeof item.id === 'string' ? item.id
+        : typeof item.run_id === 'string' ? item.run_id
+        : `${mapped.id}:run:${index}`;
+      const rawStatus = typeof item.status === 'string' ? item.status : '';
+      const status: TaskRun['status'] = rawStatus === 'running'
+        ? 'running'
+        : rawStatus === 'failed' || rawStatus === 'error'
+          ? 'failed'
+          : 'success';
+      return [{
+        id,
+        timestamp: epoch(item.createdAt ?? item.created_at ?? item.started_at),
+        status,
+        outputSummary: typeof item.summary === 'string' ? item.summary
+          : typeof item.output_summary === 'string' ? item.output_summary
+          : undefined,
+        isDemo: false
+      } satisfies TaskRun];
+    }) : [];
+    return {
+      ...result,
+      data: {
+        ...mapped,
+        comments,
+        runs,
+        events,
+        parentTaskIds: Array.isArray(detail.parents) ? detail.parents.filter((v): v is string => typeof v === 'string') : [],
+        childTaskIds: Array.isArray(detail.children) ? detail.children.filter((v): v is string => typeof v === 'string') : [],
+        latestSummary: typeof detail.latestSummary === 'string' ? detail.latestSummary : undefined
+      }
+    };
   }
 
   async createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<ProviderResult<Task>> {
@@ -271,7 +351,15 @@ export class ApiTasksProvider implements TasksProvider {
   }
 
   async getTaskRuns(taskId: string): Promise<ProviderResult<TaskRun[]>> {
-    return this.client.request<TaskRun[]>(`/api/v1/tasks/${taskId}/runs`);
+    const separator = taskId.indexOf(':');
+    if (separator < 1 || separator === taskId.length - 1) {
+      return { status: 'error', error: 'Identificador Hermes inválido.', isDemo: false };
+    }
+    const board = taskId.slice(0, separator);
+    const id = taskId.slice(separator + 1);
+    return this.client.request<TaskRun[]>(
+      `/api/v1/hermes/boards/${encodeURIComponent(board)}/tasks/${encodeURIComponent(id)}/runs`
+    );
   }
 }
 
