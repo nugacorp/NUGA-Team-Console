@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Bot,
   Shield,
@@ -21,9 +21,21 @@ import { AgentProfile, AgentRole } from '../../types';
 
 export const EquipoIAScreen: React.FC = () => {
   const { agents, updateAgent, setCurrentScreen, setSelectedAgentId, conversations } = useApp();
-  const [selectedAgent, setSelectedAgent] = useState<AgentProfile>(agents[0]);
+  const [selectedAgent, setSelectedAgent] = useState<AgentProfile | null>(agents[0] ?? null);
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState(selectedAgent.systemInstructions);
+  const [customPrompt, setCustomPrompt] = useState(selectedAgent?.systemInstructions ?? '');
+
+  useEffect(() => {
+    setSelectedAgent(current => {
+      if (current && agents.some(agent => agent.id === current.id)) {
+        return current;
+      }
+
+      const next = agents[0] ?? null;
+      setCustomPrompt(next?.systemInstructions ?? '');
+      return next;
+    });
+  }, [agents]);
 
   const handleSelectAgent = (agent: AgentProfile) => {
     setSelectedAgent(agent);
@@ -32,14 +44,18 @@ export const EquipoIAScreen: React.FC = () => {
   };
 
   const handleSavePrompt = () => {
+    if (!selectedAgent) return;
+
     updateAgent(selectedAgent.id, { systemInstructions: customPrompt });
     setIsEditingPrompt(false);
-    setSelectedAgent(prev => ({ ...prev, systemInstructions: customPrompt }));
+    setSelectedAgent(prev => prev ? { ...prev, systemInstructions: customPrompt } : null);
   };
 
   const handleAutonomyChange = (level: AgentProfile['autonomyLevel']) => {
+    if (!selectedAgent) return;
+
     updateAgent(selectedAgent.id, { autonomyLevel: level });
-    setSelectedAgent(prev => ({ ...prev, autonomyLevel: level }));
+    setSelectedAgent(prev => prev ? { ...prev, autonomyLevel: level } : null);
   };
 
   return (
@@ -130,6 +146,16 @@ export const EquipoIAScreen: React.FC = () => {
           );
         })}
       </div>
+
+      {agents.length === 0 && (
+        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-center">
+          <Bot className="w-8 h-8 mx-auto text-slate-500 mb-2" />
+          <h3 className="text-sm font-bold text-slate-100">Perfiles no disponibles</h3>
+          <p className="text-xs text-slate-400 mt-1">
+            Hermes no entregó perfiles del equipo. La consola continuará en modo seguro.
+          </p>
+        </div>
+      )}
 
       {/* Selected Agent Detailed Inspector */}
       {selectedAgent && (
