@@ -60,6 +60,7 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
       ? new SupabaseConsoleAdapter({
           url: config.supabaseUrl,
           secretKey: config.supabaseSecretKey,
+          schema: config.supabaseSchema,
           timeoutMs: 8_000,
           maxResponseBytes: 1_048_576
         })
