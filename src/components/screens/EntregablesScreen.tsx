@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Deliverable } from '../../types';
+import { getDeliverableExportIssues } from '../../utils/deliverableExportReadiness';
 
 export const EntregablesScreen: React.FC = () => {
   const {
@@ -35,7 +36,8 @@ export const EntregablesScreen: React.FC = () => {
     selectedDeliverableId,
     setSelectedDeliverableId,
     updateDeliverableStatus,
-    addToast
+    addToast,
+    appMode
   } = useApp();
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'approved' | 'ready_for_review'>('all');
@@ -45,49 +47,39 @@ export const EntregablesScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'visual' | 'markdown'>('visual');
 
   // Active deliverable
-  const activeDeliverable: Deliverable =
-    deliverables.find(d => d.id === selectedDeliverableId) || deliverables[0] || {
-      id: 'deliv-default',
-      code: 'DEL-2026-01',
-      title: 'Informe Técnico',
-      type: 'report',
-      projectId: 'proj-wisp-ops',
-      agentId: 'operaciones',
-      createdAt: '2026-08-28',
-      fileSize: '1.2 MB',
-      simulatedSha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-      status: 'ready_for_review',
-      version: 'v1.0',
-      executiveSummary: 'Sin datos disponibles.',
-      keyIndicators: [],
-      findings: [],
-      recommendations: [],
-      pendingDecisions: [],
-      limitations: []
-    };
+  const activeDeliverable: Deliverable | undefined =
+    deliverables.find(d => d.id === selectedDeliverableId) || deliverables[0];
 
   const filteredDeliverables = deliverables.filter(d => {
     if (filterStatus !== 'all' && d.status !== filterStatus) return false;
-    if (filterAgent !== 'all' && ((d as any).authorAgent || d.agentId) !== filterAgent) return false;
+    if (filterAgent !== 'all' && d.agentId !== filterAgent) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase().trim();
-      const author = ((d as any).authorAgent || d.agentId || '').toLowerCase();
+      const author = (d.agentId || '').toLowerCase();
       const title = (d.title || '').toLowerCase();
       const code = (d.code || '').toLowerCase();
-      const sum = (d.executiveSummary || (d as any).summary || '').toLowerCase();
+      const sum = (d.executiveSummary || '').toLowerCase();
       return title.includes(q) || code.includes(q) || sum.includes(q) || author.includes(q);
     }
     return true;
   });
 
-  const activeProject = projects.find(p => p.id === activeDeliverable.projectId);
+  const activeProject = activeDeliverable
+    ? projects.find(p => p.id === activeDeliverable.projectId)
+    : undefined;
+  const exportIssues = activeDeliverable
+    ? getDeliverableExportIssues(activeDeliverable)
+    : ['No hay un entregable seleccionado.'];
+  const canExportActive = Boolean(activeDeliverable && exportIssues.length === 0);
 
   // Status handlers
   const handleApprove = () => {
+    if (!activeDeliverable) return;
     updateDeliverableStatus(activeDeliverable.id, 'approved');
   };
 
   const handleRequestChanges = () => {
+    if (!activeDeliverable) return;
     updateDeliverableStatus(activeDeliverable.id, 'ready_for_review');
     addToast({
       type: 'warning',
@@ -98,6 +90,14 @@ export const EntregablesScreen: React.FC = () => {
 
   // PDF Export Handlers
   const handleExportSinglePDF = async () => {
+    if (!activeDeliverable || !canExportActive) {
+      addToast({
+        type: 'warning',
+        title: 'Entregable incompleto',
+        message: exportIssues[0] || 'Completa la información antes de exportar.'
+      });
+      return;
+    }
     try {
       setIsExporting(true);
       const { PDFExportService } = await import('../../utils/pdfExportService');
@@ -120,6 +120,17 @@ export const EntregablesScreen: React.FC = () => {
   };
 
   const handleExportDossierPDF = async () => {
+    const incompleteCount = deliverables.filter(item => getDeliverableExportIssues(item).length > 0).length;
+    if (deliverables.length === 0 || incompleteCount > 0) {
+      addToast({
+        type: 'warning',
+        title: 'Dossier no disponible',
+        message: deliverables.length === 0
+          ? 'No existen entregables reales para consolidar.'
+          : `${incompleteCount} entregable(s) requieren información antes de exportar.`
+      });
+      return;
+    }
     try {
       setIsExporting(true);
       const { PDFExportService } = await import('../../utils/pdfExportService');
@@ -142,11 +153,19 @@ export const EntregablesScreen: React.FC = () => {
   };
 
   const handleExportMarkdown = () => {
+    if (!activeDeliverable || !canExportActive) {
+      addToast({
+        type: 'warning',
+        title: 'Entregable incompleto',
+        message: exportIssues[0] || 'Completa la información antes de exportar.'
+      });
+      return;
+    }
     const content =
       activeDeliverable.rawContentMarkdown ||
       `# ${activeDeliverable.title} (${activeDeliverable.code})
 **Fecha:** ${activeDeliverable.createdAt}
-**Autor:** ${(activeDeliverable as any).authorAgent || activeDeliverable.agentId}
+**Autor:** ${activeDeliverable.agentId}
 **Versión:** ${activeDeliverable.version}
 **Hash SHA-256:** ${activeDeliverable.simulatedSha256}
 
@@ -173,6 +192,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
   };
 
   const handleCopyHash = () => {
+    if (!activeDeliverable) return;
     if (activeDeliverable.simulatedSha256) {
       navigator.clipboard.writeText(activeDeliverable.simulatedSha256);
       addToast({
@@ -190,6 +210,46 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
     0
   );
 
+  if (!activeDeliverable) {
+    return (
+      <div id="screen-entregables" className="space-y-6 pb-12 animate-in fade-in duration-200">
+        <div className="flex items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30 flex items-center justify-center">
+              <FileCheck2 className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-100">Entregables Técnicos & Dossier</h2>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                  {appMode.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">Documentos técnicos persistidos por NUGA Console</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-[420px] rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center p-8">
+          <div className="max-w-lg text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-slate-950 border border-slate-700 flex items-center justify-center">
+              <FileText className="w-8 h-8 text-slate-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-100">Aún no hay entregables reales</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                La consola no generará documentos de ejemplo en {appMode}. Cuando NUGA Console registre un entregable con contenido técnico, aparecerá aquí y podrá exportarse.
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+              Exportación bloqueada correctamente: no existen datos suficientes para crear un informe o dossier válido.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div id="screen-entregables" className="space-y-6 pb-12 animate-in fade-in duration-200">
       {/* Header Bar */}
@@ -202,7 +262,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-slate-100">Entregables Técnicos & Dossier</h2>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                DEMO
+                {appMode.toUpperCase()}
               </span>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
                 PDF Export Ready
@@ -219,7 +279,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
           <button
             id="btn-export-dossier-pdf"
             onClick={handleExportDossierPDF}
-            disabled={isExporting}
+            disabled={isExporting || deliverables.length === 0}
             className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center gap-2 transition-all shadow-sm"
             title="Exportar resumen consolidado de todos los entregables en un único PDF"
           >
@@ -230,7 +290,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
           <button
             id="btn-export-single-pdf"
             onClick={handleExportSinglePDF}
-            disabled={isExporting}
+            disabled={isExporting || !canExportActive}
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 active:scale-95 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-teal-500/25"
           >
             <Download className="w-4 h-4" />
@@ -303,7 +363,12 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
             <div className="flex items-center gap-2">
               <select
                 value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value as any)}
+                onChange={e => {
+                  const value = e.target.value;
+                  if (value === 'all' || value === 'approved' || value === 'ready_for_review') {
+                    setFilterStatus(value);
+                  }
+                }}
                 className="w-1/2 px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-300 focus:outline-none focus:border-teal-500/50"
               >
                 <option value="all">Todos ({deliverables.length})</option>
@@ -335,7 +400,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
             ) : (
               filteredDeliverables.map(del => {
                 const isSelected = activeDeliverable.id === del.id;
-                const author = (del as any).authorAgent || del.agentId || 'agente';
+                const author = del.agentId || 'agente';
 
                 return (
                   <div
@@ -367,7 +432,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
 
                     <h3 className="text-sm font-bold text-slate-100 line-clamp-1">{del.title}</h3>
                     <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                      {del.executiveSummary || (del as any).summary}
+                      {del.executiveSummary}
                     </p>
 
                     <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
@@ -411,7 +476,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
                 <p className="text-xs text-slate-400">
                   Elaborado por:{' '}
                   <strong className="text-slate-200 capitalize">
-                    {(activeDeliverable as any).authorAgent || activeDeliverable.agentId}
+                    {activeDeliverable.agentId}
                   </strong>{' '}
                   • Proyecto:{' '}
                   <strong className="text-slate-200">
@@ -452,7 +517,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
 
                 <button
                   onClick={handleExportSinglePDF}
-                  disabled={isExporting}
+                  disabled={isExporting || !canExportActive}
                   className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30 text-xs font-medium flex items-center gap-1.5 transition-all"
                 >
                   <Download className="w-3.5 h-3.5 text-teal-400" />
@@ -504,7 +569,7 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
                     <span>Resumen Ejecutivo</span>
                   </h4>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    {activeDeliverable.executiveSummary || (activeDeliverable as any).summary}
+                    {activeDeliverable.executiveSummary}
                   </p>
                 </div>
 
@@ -638,7 +703,6 @@ ${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join
                   </div>
                   <div className="whitespace-pre-wrap">
                     {activeDeliverable.rawContentMarkdown ||
-                      (activeDeliverable as any).content ||
                       `## 1. Resumen de Hallazgos\n${activeDeliverable.executiveSummary}\n\n## 2. Recomendaciones\n${(activeDeliverable.recommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n')}`}
                   </div>
                 </div>
