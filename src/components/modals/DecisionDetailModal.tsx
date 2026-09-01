@@ -23,7 +23,8 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export const DecisionDetailModal: React.FC = () => {
-  const { activeModal, closeModal, modalProps, decisions, executeDecisionAction } = useApp();
+  const { activeModal, closeModal, modalProps, decisions, executeDecisionAction, appMode } = useApp();
+  const isDemo = appMode === 'demo';
 
   const decision = decisions.find(d => d.id === modalProps?.decisionId);
 
@@ -76,6 +77,7 @@ export const DecisionDetailModal: React.FC = () => {
   };
 
   const handleRunSimulation = () => {
+    if (!isDemo) return;
     setIsSimulating(true);
     setSimulationLog(null);
     setTimeout(() => {
@@ -144,7 +146,7 @@ ${decision.exactChangeDiff || decision.proposal}
                   • Plazo: <strong className="text-[#E0E7FF]">{decision.deadline}</strong>
                 </span>
                 <span className="text-[10px] font-mono text-orange-400 bg-orange-500/10 px-1.5 py-0.2 rounded border border-orange-500/20">
-                  DEMO
+                  {appMode.toUpperCase()}
                 </span>
               </div>
               <h3 className="text-sm sm:text-base font-bold text-white mt-1 leading-snug">
@@ -153,14 +155,14 @@ ${decision.exactChangeDiff || decision.proposal}
             </div>
           </div>
 
-          <button
+          {isDemo && <button
             onClick={closeModal}
             className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             title="Cerrar ventana"
             aria-label="Cerrar ventana"
           >
             <X className="w-5 h-5" />
-          </button>
+          </button>}
         </div>
 
         {/* Governance Notice Banner */}
@@ -534,7 +536,7 @@ ${decision.exactChangeDiff || decision.proposal}
           )}
 
           {/* TAB 3: Simulate Dry-run */}
-          {activeTab === 'simulate' && (
+          {isDemo && activeTab === 'simulate' && (
             <div className="p-4 rounded-xl bg-[#111D27] border border-blue-500/40 space-y-3.5 animate-in fade-in">
               <div className="flex items-center gap-2 text-blue-400 font-bold text-xs border-b border-[#1E293B] pb-2">
                 <Play className="w-4 h-4" />
