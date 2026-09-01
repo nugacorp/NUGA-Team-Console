@@ -120,6 +120,9 @@ interface AppContextType {
   demoDataset: string;
   setDemoDataset: (datasetId: string) => void;
   refreshData: () => Promise<void>;
+  loadTaskDetail: (taskId: string) => Promise<void>;
+  taskDetailLoading: boolean;
+  taskDetailError?: string;
 
   // Data
   agents: AgentProfile[];
@@ -245,6 +248,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedAgentId, setSelectedAgentId] = useState<AgentRole | undefined>(undefined);
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(undefined);
+  const [taskDetailLoading, setTaskDetailLoading] = useState(false);
+  const [taskDetailError, setTaskDetailError] = useState<string | undefined>(undefined);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | undefined>(undefined);
   const [selectedRouterId, setSelectedRouterId] = useState<string | undefined>(undefined);
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | undefined>(undefined);
@@ -499,6 +504,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [providers]);
 
+  const loadTaskDetail = useCallback(async (taskId: string) => {
+    if (appMode === 'demo') return;
+    setTaskDetailLoading(true);
+    setTaskDetailError(undefined);
+    const res = await providers.tasks.getTaskById(taskId);
+    if (res.data) {
+      setTasks(prev => prev.map(task => task.id === taskId ? { ...task, ...res.data! } : task));
+    } else {
+      setTaskDetailError(res.error ?? 'No fue posible cargar el detalle desde Hermes.');
+    }
+    setTaskDetailLoading(false);
+  }, [appMode, providers]);
+
   const addTaskComment = useCallback(async (taskId: string, commentText: string) => {
     const res = await providers.tasks.addTaskComment(taskId, {
       authorName: user.name,
@@ -744,6 +762,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         demoDataset,
         setDemoDataset,
         refreshData,
+        loadTaskDetail,
+        taskDetailLoading,
+        taskDetailError,
         agents,
         projects,
         tasks,

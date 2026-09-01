@@ -70,4 +70,24 @@ describe('Hermes read-only JSON adapter', () => {
     const adapter = adapterWith(async () => 'not-json');
     await expect(adapter.listBoards()).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
   });
+
+  it('sanitizes comments and events in task detail without using write commands', async () => {
+    const runner = vi.fn<HermesCommandRunner>(async () => JSON.stringify({
+      task: { id: 'task-1', title: 'Detail', status: 'ready', priority: 1, created_at: 123 },
+      parents: [], children: [], runs: [], latest_summary: 'Safe summary',
+      comments: [{ author: 'ramiro', body: 'Read only', created_at: 124 }],
+      events: [{ kind: 'created', created_at: 123, run_id: null }]
+    }));
+
+    const detail = await adapterWith(runner).getTask('nuga-team-lab', 'task-1');
+
+    expect(detail).toMatchObject({
+      latestSummary: 'Safe summary',
+      comments: [{ author: 'ramiro', body: 'Read only', createdAt: 124 }],
+      events: [{ kind: 'created', createdAt: 123 }]
+    });
+    expect(runner.mock.calls[0][1]).toEqual([
+      'kanban', '--board', 'nuga-team-lab', 'show', 'task-1', '--json'
+    ]);
+  });
 });
