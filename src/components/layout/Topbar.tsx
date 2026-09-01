@@ -21,6 +21,7 @@ import { HermesStatus } from '../../types';
 import { APP_INFO } from '../../constants';
 import { EnvironmentSelector } from './EnvironmentSelector';
 import { useAuth } from '../../auth/AuthGate';
+import { countOpenTasks } from '../../utils/taskMetrics';
 
 export const Topbar: React.FC = () => {
   const { logout } = useAuth();
@@ -49,7 +50,7 @@ export const Topbar: React.FC = () => {
   const [demoHermesStatus, setDemoHermesStatus] = useState<HermesStatus>('No conectado');
   const hermesRef = useRef<HTMLDivElement>(null);
 
-  const activeTasksCount = (tasks || []).filter(t => t.status === 'in_progress' || t.status === 'review').length;
+  const openTasksCount = countOpenTasks(tasks);
   const pendingDecisionsCount = (decisions || []).filter(d => d.status === 'pending').length;
   const criticalDecisionsCount = (decisions || []).filter(d => d.status === 'pending' && (d.risk === 'critical' || d.risk === 'high')).length;
   const unreadNotifs = (notifications || []).filter(n => !n.read);
@@ -300,11 +301,11 @@ export const Topbar: React.FC = () => {
           id="quick-active-tasks-btn"
           onClick={() => setCurrentScreen('tareas')}
           className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#111D27] hover:bg-[#1E293B] border border-[#1E293B] text-xs text-[#E0E7FF] transition-colors cursor-pointer"
-          title={`${activeTasksCount} tareas activas en entorno ${modeLabel}`}
+          title={`${openTasksCount} tareas abiertas en entorno ${modeLabel}`}
         >
           <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
-          <span className="font-mono font-bold text-blue-400">{activeTasksCount}</span>
-          <span className="text-[#94A3B8] text-[11px]">tareas · {modeLabel}</span>
+          <span className="font-mono font-bold text-blue-400">{openTasksCount}</span>
+          <span className="text-[#94A3B8] text-[11px]">abiertas · {modeLabel}</span>
         </button>
 
         {/* Quick KPI: Pending decisions */}
