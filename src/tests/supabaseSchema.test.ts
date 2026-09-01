@@ -16,7 +16,7 @@ const productionBackendAccess = readFileSync(
   'utf8'
 );
 
-const tables = ['task_extensions', 'decisions', 'deliverables', 'audit_events'] as const;
+const tables = ['agent_profiles', 'task_extensions', 'decisions', 'deliverables', 'audit_events'] as const;
 
 describe('Supabase console-owned schema baseline', () => {
   it('defines a separate fail-closed production schema', () => {
