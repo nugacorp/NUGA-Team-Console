@@ -6,6 +6,14 @@ create schema if not exists nuga_console;
 
 revoke all on schema nuga_console from public, anon, authenticated;
 
+create table nuga_console.agent_profiles (
+  role text primary key check (role in ('director', 'nugacore', 'operaciones', 'marketing', 'administracion')),
+  avatar_data_url text not null default '' check (length(avatar_data_url) <= 180000),
+  autonomy_level text not null default 'supervisado' check (autonomy_level in ('supervisado', 'semi-autonomo', 'autonomo')),
+  system_instructions text not null default 'Perfil organizacional administrado por NUGA Console.' check (length(system_instructions) between 1 and 4000),
+  updated_at timestamptz not null default now()
+);
+
 create table nuga_console.task_extensions (
   id uuid primary key default gen_random_uuid(),
   hermes_board_slug text not null check (hermes_board_slug ~ '^[a-z0-9][a-z0-9-]{0,62}$'),
@@ -96,6 +104,8 @@ create index audit_events_occurred_at_idx on nuga_console.audit_events (occurred
 create index audit_events_correlation_id_idx on nuga_console.audit_events (correlation_id);
 
 alter table nuga_console.task_extensions enable row level security;
+alter table nuga_console.agent_profiles enable row level security;
+alter table nuga_console.agent_profiles force row level security;
 alter table nuga_console.task_extensions force row level security;
 alter table nuga_console.decisions enable row level security;
 alter table nuga_console.decisions force row level security;
