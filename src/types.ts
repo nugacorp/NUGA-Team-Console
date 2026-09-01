@@ -119,6 +119,13 @@ export interface TaskComment {
   isDemo?: boolean;
 }
 
+export interface TaskEvent {
+  id: string;
+  kind: string;
+  timestamp: string;
+  runId?: string;
+}
+
 export interface Task {
   id: string;
   code: string; // e.g. "TSK-101"
@@ -140,6 +147,10 @@ export interface Task {
   comments?: TaskComment[];
   attachments?: MessageAttachment[];
   runs?: TaskRun[];
+  events?: TaskEvent[];
+  parentTaskIds?: string[];
+  childTaskIds?: string[];
+  latestSummary?: string;
   createdAt: string;
   updatedAt: string;
   deadline: string;
