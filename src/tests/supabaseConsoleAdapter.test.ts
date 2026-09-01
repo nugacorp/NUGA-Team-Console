@@ -9,6 +9,7 @@ function adapterWith(request: SupabaseFetch) {
   return new SupabaseConsoleAdapter({
     url: 'https://project.supabase.co',
     secretKey: 'sb_secret_test-only-not-real',
+    schema: 'nuga_console',
     timeoutMs: 1_000,
     maxResponseBytes: 10_000
   }, request);
@@ -26,6 +27,24 @@ describe('Supabase server-only console adapter', () => {
     expect(headers.apikey).toBe('sb_secret_test-only-not-real');
     expect(headers['accept-profile']).toBe('nuga_console');
     expect(headers.authorization).toBeUndefined();
+  });
+
+  it('uses the isolated production schema when explicitly configured', async () => {
+    const request = vi.fn<SupabaseFetch>(async () =>
+      new Response('[]', { status: 200 })
+    );
+    const adapter = new SupabaseConsoleAdapter({
+      url: 'https://project.supabase.co',
+      secretKey: 'sb_secret_test-only-not-real',
+      schema: 'nuga_console_production',
+      timeoutMs: 1_000,
+      maxResponseBytes: 10_000
+    }, request);
+
+    await adapter.list('decisions');
+    const headers = request.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(headers['accept-profile']).toBe('nuga_console_production');
+    expect(headers['content-profile']).toBe('nuga_console_production');
   });
 
   it('lists task extensions in one bounded server-side request', async () => {
