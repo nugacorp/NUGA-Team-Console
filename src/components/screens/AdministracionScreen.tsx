@@ -57,13 +57,13 @@ export const AdministracionScreen: React.FC = () => {
           </div>
         </div>
 
-        {appMode === 'demo' && <button
+        <button
           onClick={() => openModal('newAdminItem')}
           className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20"
         >
           <Plus className="w-4 h-4" />
           <span>Nuevo Registro Administrativo</span>
-        </button>}
+        </button>
       </div>
 
       {/* Notice Banner */}
@@ -108,6 +108,16 @@ export const AdministracionScreen: React.FC = () => {
       </div>
 
       {/* Administrative Items List */}
+      {filteredItems.length === 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+          <Briefcase className="mx-auto h-8 w-8 text-amber-400" />
+          <h3 className="mt-3 text-sm font-bold text-slate-100">Aún no hay registros administrativos</h3>
+          <p className="mt-2 text-xs text-slate-400">Crea un registro real de seguimiento; no se ejecutarán pagos ni transacciones.</p>
+          <button onClick={() => openModal('newAdminItem')} className="mt-4 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400">
+            Crear primer registro
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {(filteredItems || []).map(item => (
           <div

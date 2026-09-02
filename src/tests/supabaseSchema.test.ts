@@ -69,3 +69,18 @@ describe('Supabase console-owned schema baseline', () => {
     expect(backendAccess).not.toMatch(/grant\s+.+\s+to\s+(anon|authenticated)/i);
   });
 });
+
+describe('production business persistence schema', () => {
+  const business = readFileSync(resolve('supabase/schemas/nuga_console_production_business.sql'), 'utf8').toLowerCase();
+  it('creates real project, campaign and administration tables with RLS', () => {
+    for (const table of ['projects', 'campaigns', 'admin_items']) {
+      expect(business).toContain(`create table if not exists nuga_console_production.${table}`);
+      expect(business).toContain(`alter table nuga_console_production.${table} enable row level security`);
+    }
+  });
+  it('keeps browser roles denied and creates audit events automatically', () => {
+    expect(business).toContain('from public, anon, authenticated');
+    expect(business).toContain('audit_business_insert');
+    expect(business).toContain('after insert');
+  });
+});

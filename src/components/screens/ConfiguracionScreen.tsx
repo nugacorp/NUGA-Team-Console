@@ -61,6 +61,12 @@ export const ConfiguracionScreen: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-100">Políticas de Seguridad & Gobernanza Humana</h3>
           </div>
 
+          {!isDemo && (
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3 text-[11px] leading-relaxed text-sky-200">
+              La configuración efectiva es informada por el backend. La edición permanecerá bloqueada hasta disponer de persistencia y auditoría específicas para políticas.
+            </div>
+          )}
+
           <div className="space-y-4 text-xs">
             {/* Toggle 1: Human confirmation */}
             <div className="flex items-start justify-between gap-4 p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60">
@@ -74,6 +80,7 @@ export const ConfiguracionScreen: React.FC = () => {
               </div>
               <input
                 type="checkbox"
+                disabled={!isDemo}
                 checked={settings.requireHumanApprovalAllHighRisk}
                 onChange={e => updateSettings({ requireHumanApprovalAllHighRisk: e.target.checked })}
                 className="mt-1 rounded bg-slate-800 border-slate-700 text-sky-500 focus:ring-0 w-4 h-4"
@@ -92,6 +99,7 @@ export const ConfiguracionScreen: React.FC = () => {
               </div>
               <input
                 type="checkbox"
+                disabled={!isDemo}
                 checked={settings.allowWriteToolsGlobal}
                 onChange={e => updateSettings({ allowWriteToolsGlobal: e.target.checked })}
                 className="mt-1 rounded bg-slate-800 border-slate-700 text-sky-500 focus:ring-0 w-4 h-4"
@@ -110,6 +118,7 @@ export const ConfiguracionScreen: React.FC = () => {
               </div>
               <input
                 type="checkbox"
+                disabled={!isDemo}
                 checked={settings.maskSensitiveData}
                 onChange={e => updateSettings({ maskSensitiveData: e.target.checked })}
                 className="mt-1 rounded bg-slate-800 border-slate-700 text-sky-500 focus:ring-0 w-4 h-4"
@@ -128,8 +137,8 @@ export const ConfiguracionScreen: React.FC = () => {
           <div className="space-y-3 text-xs">
             <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between">
               <div>
-                <span className="font-bold text-slate-200 block">Hermes Multi-Agent Engine</span>
-                <span className="text-[11px] text-slate-400">Estado informado por el backend</span>
+                <span className="font-bold text-slate-200 block">Hermes Kanban (solo lectura)</span>
+                <span className="text-[11px] text-slate-400">Lectura de tableros informada por el backend; mensajería no conectada</span>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-[10px]">
                 {serverStatus?.hermes === 'available' ? 'DISPONIBLE' : serverStatus?.hermes === 'degraded' ? 'DEGRADADO' : 'NO CONECTADO'}

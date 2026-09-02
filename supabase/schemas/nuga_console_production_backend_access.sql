@@ -8,7 +8,10 @@ grant select, insert, update
   on nuga_console_production.agent_profiles,
      nuga_console_production.task_extensions,
      nuga_console_production.decisions,
-     nuga_console_production.deliverables
+     nuga_console_production.deliverables,
+     nuga_console_production.projects,
+     nuga_console_production.campaigns,
+     nuga_console_production.admin_items
   to service_role;
 
 grant select, insert

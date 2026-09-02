@@ -51,16 +51,26 @@ export const ProyectosScreen: React.FC = () => {
           </div>
         </div>
 
-        {appMode === 'demo' && <button
-          onClick={() => openModal('newTask', { projectId: selectedProject?.id })}
+        <button
+          onClick={() => openModal('newProject')}
           className="px-3.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-sky-500/20"
         >
           <Plus className="w-4 h-4" />
-          <span>Crear Tarea para Proyecto</span>
-        </button>}
+          <span>Nuevo Proyecto</span>
+        </button>
       </div>
 
       {/* Project Cards Selector */}
+      {projects.length === 0 && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+          <FolderKanban className="mx-auto h-8 w-8 text-sky-400" />
+          <h3 className="mt-3 text-sm font-bold text-slate-100">Aún no hay proyectos</h3>
+          <p className="mt-2 text-xs text-slate-400">Crea el primer proyecto real; quedará persistido en Supabase y registrado en auditoría.</p>
+          <button onClick={() => openModal('newProject')} className="mt-4 rounded-xl bg-sky-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-sky-400">
+            Crear primer proyecto
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {(projects || []).map(project => {
           const isSelected = selectedProject?.id === project.id;
