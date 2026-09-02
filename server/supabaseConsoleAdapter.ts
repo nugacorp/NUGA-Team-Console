@@ -3,7 +3,10 @@ export type ConsoleTable =
   | 'agent_profiles'
   | 'decisions'
   | 'deliverables'
-  | 'audit_events';
+  | 'audit_events'
+  | 'projects'
+  | 'campaigns'
+  | 'admin_items';
 
 export interface SupabaseConsoleAdapterOptions {
   url: string;
@@ -53,6 +56,9 @@ function assertNoSensitiveKeys(value: unknown): void {
 }
 
 const writableKeys = {
+  projects: ['code', 'name', 'category', 'objective', 'owner', 'team', 'status', 'progress_percent', 'start_date', 'target_end_date', 'risks', 'milestones', 'budget_estimate_usd', 'summary_executive', 'deliverables_count'],
+  campaigns: ['code', 'name', 'objective', 'target_audience', 'value_proposition', 'channels', 'budget_usd', 'spent_budget_usd', 'schedule_date_range', 'status', 'creative_stage', 'variants_count', 'metrics', 'requires_approval', 'assigned_agent'],
+  admin_items: ['title', 'category', 'responsible', 'agent_assigned', 'deadline', 'status', 'priority', 'amount_usd', 'evidence_ref', 'notes'],
   decisions: [
     'code', 'title', 'specialist', 'project_id', 'hermes_board_slug',
     'hermes_task_id', 'priority', 'risk', 'status', 'impact',

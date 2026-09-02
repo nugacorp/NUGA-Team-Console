@@ -16,16 +16,22 @@ export const NewCampaignModal: React.FC = () => {
     e.preventDefault();
     if (!name.trim()) return;
 
+    const suffix = crypto.randomUUID().slice(0, 8).toUpperCase();
     createCampaign({
+      code: `CAM-${suffix}`,
       name: name.trim(),
       objective: objective.trim() || 'Atracción de prospectos calificados para servicio de conectividad.',
-      status: 'active',
-      budgetUsd: Number(budgetUsd) || 1000,
+      status: 'draft',
+      simulatedBudgetUsd: Number(budgetUsd) || 1000,
       spentBudgetUsd: 0,
-      startDate: '2026-09-01',
-      endDate: '2026-09-30',
+      scheduleDateRange: `${new Date().toISOString().slice(0, 10)} — por definir`,
       channels: ['meta_ads', 'tiktok'],
       targetAudience: targetAudience.trim(),
+      valueProposition: objective.trim(),
+      creativeStage: 'brief',
+      variantsCount: 0,
+      requiresApproval: true,
+      assignedAgent: 'marketing',
       metrics: {
         impressions: 0,
         clicks: 0,

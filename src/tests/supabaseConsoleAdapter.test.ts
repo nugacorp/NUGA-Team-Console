@@ -86,6 +86,15 @@ describe('Supabase server-only console adapter', () => {
     expect('delete' in adapter).toBe(false);
   });
 
+  it('allowlists real project writes without exposing browser credentials', async () => {
+    const request = vi.fn<SupabaseFetch>(async () => new Response('[{"id":"1","code":"PRJ-1"}]', { status: 200 }));
+    await adapterWith(request).create('projects', { code: 'PRJ-1', name: 'Real', category: 'wisp' });
+    const [url, init] = request.mock.calls[0];
+    expect(String(url)).toContain('/rest/v1/projects');
+    expect(init?.method).toBe('POST');
+    expect(init?.headers).toMatchObject({ apikey: 'sb_secret_test-only-not-real' });
+  });
+
   it('validates Hermes identifiers before making a request', async () => {
     const request = vi.fn<SupabaseFetch>();
     expect(() =>

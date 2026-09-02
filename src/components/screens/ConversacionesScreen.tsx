@@ -43,7 +43,9 @@ export const ConversacionesScreen: React.FC = () => {
     return conversations[0]?.id || 'conv-director';
   });
 
-  const [messages, setMessages] = useState<Message[]>(() => storageService.getMessages(activeConvId));
+  const [messages, setMessages] = useState<Message[]>(() =>
+    isDemoBuild ? storageService.getMessages(activeConvId) : []
+  );
   const [inputText, setInputText] = useState('');
   const [isOnlyAnalysis, setIsOnlyAnalysis] = useState(true);
   const [createTaskDerived, setCreateTaskDerived] = useState(false);
@@ -59,18 +61,18 @@ export const ConversacionesScreen: React.FC = () => {
       const match = conversations.find(c => c.agentId === selectedAgentId);
       if (match) {
         setActiveConvId(match.id);
-        setMessages(storageService.getMessages(match.id));
+        setMessages(isDemoBuild ? storageService.getMessages(match.id) : []);
       }
     }
-  }, [selectedAgentId, conversations]);
+  }, [selectedAgentId, conversations, isDemoBuild]);
 
   // Load messages on activeConvId change
   useEffect(() => {
-    setMessages(storageService.getMessages(activeConvId));
+    setMessages(isDemoBuild ? storageService.getMessages(activeConvId) : []);
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
-  }, [activeConvId]);
+  }, [activeConvId, isDemoBuild]);
 
   const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
 
@@ -122,7 +124,7 @@ export const ConversacionesScreen: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-sky-400" />
-              Canales del Equipo (5)
+              Canales del Equipo ({conversations.length})
             </h2>
             <span className="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono font-bold text-sky-400">
               {appMode.toUpperCase()}
@@ -132,6 +134,15 @@ export const ConversacionesScreen: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
+          {conversations.length === 0 && (
+            <div className="m-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
+              <MessageSquare className="mx-auto h-5 w-5 text-amber-400" />
+              <p className="mt-2 text-xs font-bold text-slate-200">Sin canales conectados</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+                Hermes Kanban está disponible en solo lectura, pero la mensajería todavía no tiene un transporte real.
+              </p>
+            </div>
+          )}
           {conversations.map(conv => {
             const isActive = conv.id === activeConvId;
 
@@ -174,10 +185,10 @@ export const ConversacionesScreen: React.FC = () => {
               <Bot className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-100">{activeConv?.title}</h3>
-              <span className="text-[11px] text-emerald-400 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                Agente en línea • Modo sandbox local
+              <h3 className="text-sm font-bold text-slate-100">{activeConv?.title || 'Canal de mensajería'}</h3>
+              <span className="text-[11px] text-amber-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                {isDemoBuild ? 'Agente local de demostración' : 'Mensajería Hermes no conectada'}
               </span>
             </div>
           </div>
@@ -185,6 +196,17 @@ export const ConversacionesScreen: React.FC = () => {
 
         {/* Messages List Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar bg-slate-950/30">
+          {!isDemoBuild && messages.length === 0 && (
+            <div className="flex h-full min-h-64 items-center justify-center">
+              <div className="max-w-md rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
+                <Bot className="mx-auto h-7 w-7 text-amber-400" />
+                <h4 className="mt-3 text-sm font-bold text-slate-100">Mensajería Hermes no conectada</h4>
+                <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                  No se muestran conversaciones ni respuestas generadas localmente. Esta sección se habilitará cuando exista un transporte Hermes real y autenticado.
+                </p>
+              </div>
+            </div>
+          )}
           {messages.map(msg => {
             const isUser = msg.sender === 'user';
 
@@ -344,7 +366,7 @@ export const ConversacionesScreen: React.FC = () => {
         </div>}
 
         {/* Input Bar & Controls */}
-        <div className="p-4 bg-slate-900 border-t border-slate-800 space-y-3">
+        {isDemoBuild ? <div className="p-4 bg-slate-900 border-t border-slate-800 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
@@ -417,7 +439,11 @@ export const ConversacionesScreen: React.FC = () => {
               <span className="hidden sm:inline">Enviar</span>
             </button>
           </div>
-        </div>
+        </div> : (
+          <div className="border-t border-slate-800 bg-slate-900 p-4 text-center text-xs text-slate-400">
+            Envío deshabilitado: no existe todavía un endpoint real de mensajería Hermes.
+          </div>
+        )}
       </div>
     </div>
   );

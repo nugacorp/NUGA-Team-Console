@@ -406,23 +406,108 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
     consoleOperation(() => supabaseAdapter!.create('deliverables', request.body as Record<string, unknown>))(request, response)
   );
   app.get(`${API_PREFIX}/audit/events`, requireSession, consoleOperation(() => supabaseAdapter!.list('audit_events')));
-  app.post(`${API_PREFIX}/audit/events`, requireSession, requireCsrf, (request, response) =>
-    consoleOperation(() => supabaseAdapter!.create('audit_events', request.body as Record<string, unknown>))(request, response)
+
+  const mapProjectInput = (body: Record<string, unknown>) => ({
+    code: body.code,
+    name: body.name,
+    category: body.category,
+    objective: body.objective,
+    owner: body.owner,
+    team: body.team,
+    status: body.status,
+    progress_percent: body.progressPercent,
+    start_date: body.startDate,
+    target_end_date: body.targetEndDate,
+    risks: body.risks,
+    milestones: body.milestones,
+    budget_estimate_usd: body.budgetEstimateUsd,
+    summary_executive: body.summaryExecutive,
+    deliverables_count: body.deliverablesCount
+  });
+  const mapCampaignInput = (body: Record<string, unknown>) => ({
+    code: body.code,
+    name: body.name,
+    objective: body.objective,
+    target_audience: body.targetAudience,
+    value_proposition: body.valueProposition,
+    channels: body.channels,
+    budget_usd: body.simulatedBudgetUsd,
+    spent_budget_usd: body.spentBudgetUsd,
+    schedule_date_range: body.scheduleDateRange,
+    status: body.status,
+    creative_stage: body.creativeStage,
+    variants_count: body.variantsCount,
+    metrics: body.metrics,
+    requires_approval: body.requiresApproval,
+    assigned_agent: body.assignedAgent
+  });
+  const mapAdminInput = (body: Record<string, unknown>) => ({
+    title: body.title,
+    category: body.category,
+    responsible: body.responsible,
+    agent_assigned: body.agentAssigned,
+    deadline: body.deadline,
+    status: body.status,
+    priority: body.priority,
+    amount_usd: body.amountUsd,
+    evidence_ref: body.evidenceRef,
+    notes: body.notes
+  });
+  const mapProjectOutput = (row: Record<string, unknown>) => ({
+    id: row.id, code: row.code, name: row.name, category: row.category,
+    objective: row.objective, owner: row.owner, team: row.team, status: row.status,
+    progressPercent: row.progress_percent, startDate: row.start_date,
+    targetEndDate: row.target_end_date, risks: row.risks, milestones: row.milestones,
+    budgetEstimateUsd: row.budget_estimate_usd, summaryExecutive: row.summary_executive,
+    deliverablesCount: row.deliverables_count, isDemo: false
+  });
+  const mapCampaignOutput = (row: Record<string, unknown>) => ({
+    id: row.id, code: row.code, name: row.name, objective: row.objective,
+    targetAudience: row.target_audience, valueProposition: row.value_proposition,
+    channels: row.channels, simulatedBudgetUsd: row.budget_usd,
+    spentBudgetUsd: row.spent_budget_usd, scheduleDateRange: row.schedule_date_range,
+    status: row.status, creativeStage: row.creative_stage,
+    variantsCount: row.variants_count, metrics: row.metrics,
+    requiresApproval: row.requires_approval, assignedAgent: row.assigned_agent,
+    isDemo: false
+  });
+  const mapAdminOutput = (row: Record<string, unknown>) => ({
+    id: row.id, title: row.title, category: row.category,
+    responsible: row.responsible, agentAssigned: row.agent_assigned,
+    deadline: row.deadline, status: row.status, priority: row.priority,
+    amountUsd: row.amount_usd, evidenceRef: row.evidence_ref,
+    notes: row.notes, isDemo: false
+  });
+
+  app.get(`${API_PREFIX}/projects`, requireSession, consoleOperation(async () =>
+    (await supabaseAdapter!.list('projects')).map(mapProjectOutput)
+  ));
+  app.post(`${API_PREFIX}/projects`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(async () => mapProjectOutput((await supabaseAdapter!.create('projects', mapProjectInput(request.body as Record<string, unknown>)))[0]))(request, response)
+  );
+  app.get(`${API_PREFIX}/marketing/campaigns`, requireSession, consoleOperation(async () =>
+    (await supabaseAdapter!.list('campaigns')).map(mapCampaignOutput)
+  ));
+  app.post(`${API_PREFIX}/marketing/campaigns`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(async () => mapCampaignOutput((await supabaseAdapter!.create('campaigns', mapCampaignInput(request.body as Record<string, unknown>)))[0]))(request, response)
+  );
+  app.get(`${API_PREFIX}/admin/items`, requireSession, consoleOperation(async () =>
+    (await supabaseAdapter!.list('admin_items')).map(mapAdminOutput)
+  ));
+  app.post(`${API_PREFIX}/admin/items`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(async () => mapAdminOutput((await supabaseAdapter!.create('admin_items', mapAdminInput(request.body as Record<string, unknown>)))[0]))(request, response)
   );
 
   // Explicit read models for modules that are not connected yet. Returning an
   // authenticated empty collection prevents the browser from inventing DEMO
   // fixtures while keeping every external integration fail-closed.
   [
-    `${API_PREFIX}/projects`,
     `${API_PREFIX}/wisp/towers`,
     `${API_PREFIX}/wisp/routers`,
     `${API_PREFIX}/wisp/links`,
     `${API_PREFIX}/wisp/incidents`,
-    `${API_PREFIX}/marketing/campaigns`,
     `${API_PREFIX}/marketing/media-assets`,
     `${API_PREFIX}/conversations`,
-    `${API_PREFIX}/admin/items`,
     `${API_PREFIX}/notifications`
   ].forEach(path => {
     app.get(path, requireSession, (_request, response) => {

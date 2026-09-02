@@ -85,19 +85,19 @@ export const MarketingScreen: React.FC = () => {
             <span>Generar Video con IA</span>
           </button>}
 
-          {isDemo && <button
+          <button
             onClick={() => openModal('newCampaign')}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-4 h-4 text-fuchsia-400" />
             <span>Nueva Campaña</span>
-          </button>}
+          </button>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-        {isDemo && <button
+        <button
           onClick={() => setActiveTab('campaigns')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeTab === 'campaigns'
@@ -107,9 +107,9 @@ export const MarketingScreen: React.FC = () => {
         >
           <TrendingUp className="w-4 h-4" />
           <span>Campañas Activas ({campaigns.length})</span>
-        </button>}
+        </button>
 
-        <button
+        {isDemo && <button
           onClick={() => setActiveTab('library')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeTab === 'library'
@@ -119,9 +119,9 @@ export const MarketingScreen: React.FC = () => {
         >
           <Film className="w-4 h-4" />
           <span>Biblioteca Multimedia ({mediaAssets.length})</span>
-        </button>
+        </button>}
 
-        <button
+        {isDemo && <button
           onClick={() => setActiveTab('generator')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeTab === 'generator'
@@ -131,11 +131,21 @@ export const MarketingScreen: React.FC = () => {
         >
           <Sparkles className="w-4 h-4" />
           <span>Generador de Creativos IA</span>
-        </button>
+        </button>}
       </div>
 
       {/* TAB 1: Campaigns */}
       {activeTab === 'campaigns' && (
+        campaigns.length === 0 ? (
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+            <TrendingUp className="mx-auto h-8 w-8 text-fuchsia-400" />
+            <h3 className="mt-3 text-sm font-bold text-slate-100">Aún no hay campañas</h3>
+            <p className="mt-2 text-xs text-slate-400">Crea la primera campaña con datos reales; las métricas y los creativos solo aparecerán cuando exista una fuente conectada.</p>
+            <button onClick={() => openModal('newCampaign')} className="mt-4 rounded-xl bg-fuchsia-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-fuchsia-400">
+              Crear primera campaña
+            </button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Campaigns list (5 cols) */}
           <div className="lg:col-span-5 space-y-3">
@@ -229,6 +239,7 @@ export const MarketingScreen: React.FC = () => {
             </div>
           )}
         </div>
+        )
       )}
 
       {/* TAB 2: Multimedia Library */}

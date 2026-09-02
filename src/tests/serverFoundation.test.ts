@@ -232,20 +232,22 @@ describe('NUGA Console API staging foundation', () => {
     expect(agents.every(agent => agent.isDemo !== true)).toBe(true);
 
     for (const path of [
-      '/api/v1/projects',
       '/api/v1/wisp/towers',
       '/api/v1/wisp/routers',
       '/api/v1/wisp/links',
       '/api/v1/wisp/incidents',
-      '/api/v1/marketing/campaigns',
       '/api/v1/marketing/media-assets',
       '/api/v1/conversations',
-      '/api/v1/admin/items',
       '/api/v1/notifications'
     ]) {
       const response = await fetch(`${baseUrl}${path}`, { headers });
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual([]);
+    }
+
+    for (const path of ['/api/v1/projects', '/api/v1/marketing/campaigns', '/api/v1/admin/items']) {
+      const response = await fetch(`${baseUrl}${path}`, { headers });
+      expect(response.status).toBe(503);
     }
 
     const settingsResponse = await fetch(`${baseUrl}/api/v1/config/settings`, { headers });
@@ -255,6 +257,22 @@ describe('NUGA Console API staging foundation', () => {
       allowWriteToolsGlobal: false,
       mikrotikApiStatus: 'disconnected'
     });
+  });
+
+  it('reads real business collections from the Supabase adapter', async () => {
+    const list = async (table: string) => table === 'projects' ? [{
+      id: '00000000-0000-0000-0000-000000000001', code: 'PRJ-REAL', name: 'Proyecto real',
+      category: 'wisp', objective: 'Operar', owner: 'Ramiro', team: [], status: 'planning',
+      progress_percent: 0, start_date: '2026-09-02', target_end_date: '2026-12-31',
+      risks: [], milestones: [], budget_estimate_usd: 0, summary_executive: 'Operar', deliverables_count: 0
+    }] : [];
+    const supabaseAdapter = { list } as unknown as SupabaseConsoleAdapter;
+    const baseUrl = await startTestServer({ supabaseAdapter });
+    const loginResponse = await login(baseUrl);
+    const headers = { cookie: loginResponse.headers.get('set-cookie') ?? '', 'x-nuga-mode': 'staging' };
+    const response = await fetch(`${baseUrl}/api/v1/projects`, { headers });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject([{ code: 'PRJ-REAL', progressPercent: 0, isDemo: false }]);
   });
 
   it('requires CSRF and persists an allowlisted profile avatar through the backend adapter', async () => {

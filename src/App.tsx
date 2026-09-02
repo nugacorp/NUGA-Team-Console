@@ -28,6 +28,7 @@ import { NewTaskModal } from './components/modals/NewTaskModal';
 import { NewIncidentModal } from './components/modals/NewIncidentModal';
 import { NewCampaignModal } from './components/modals/NewCampaignModal';
 import { NewAdminItemModal } from './components/modals/NewAdminItemModal';
+import { NewProjectModal } from './components/modals/NewProjectModal';
 import { MediaViewerModal } from './components/modals/MediaViewerModal';
 
 const MainLayout: React.FC = () => {
@@ -99,6 +100,7 @@ const MainLayout: React.FC = () => {
       <NewIncidentModal />
       <NewCampaignModal />
       <NewAdminItemModal />
+      <NewProjectModal />
       <MediaViewerModal />
     </div>
   );

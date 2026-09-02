@@ -174,6 +174,7 @@ interface AppContextType {
     confirmationText?: string
   ) => void;
   createIncident: (incident: any) => void;
+  createProject: (project: any) => void;
   createCampaign: (campaign: any) => void;
   createAdminItem: (item: any) => void;
   updateDeliverableStatus: (id: string, status: Deliverable['status']) => void;
@@ -597,6 +598,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         title: 'Campaña Creada',
         message: `Campaña ${res.data.code} agregada en fase de Brief creativo.`
       });
+    } else {
+      addToast({ type: 'error', title: 'No se guardó la campaña', message: res.error || 'La API rechazó el registro.' });
+    }
+  }, [addToast, providers]);
+
+  const createProject = useCallback(async (projectData: any) => {
+    const res = await providers.projects.createProject(projectData);
+    if (res.data) {
+      setProjects(prev => [res.data!, ...prev]);
+      addToast({ type: 'success', title: 'Proyecto Creado', message: `${res.data.code} fue guardado en producción.` });
+    } else {
+      addToast({ type: 'error', title: 'No se guardó el proyecto', message: res.error || 'La API rechazó el registro.' });
     }
   }, [addToast, providers]);
 
@@ -609,6 +622,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         title: 'Registro Administrativo Creado',
         message: `"${res.data.title}" guardado en seguimiento.`
       });
+    } else {
+      addToast({ type: 'error', title: 'No se guardó el registro', message: res.error || 'La API rechazó el registro.' });
     }
   }, [addToast, providers]);
 
@@ -803,6 +818,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addTaskComment,
         executeDecisionAction,
         createIncident,
+        createProject,
         createCampaign,
         createAdminItem,
         updateDeliverableStatus,

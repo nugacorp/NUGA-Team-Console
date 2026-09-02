@@ -51,10 +51,24 @@ export const AuditoriaScreen: React.FC = () => {
   };
 
   const handleExport = () => {
+    if (filteredEvents.length === 0) return;
+
+    const blob = new Blob([JSON.stringify(filteredEvents, null, 2)], {
+      type: 'application/json'
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `nuga-auditoria-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+
     addToast({
-      type: 'info',
+      type: 'success',
       title: 'Exportación de Auditoría',
-      message: `${filteredEvents.length} eventos estructurados listos para descarga en formato JSON.`
+      message: `${filteredEvents.length} eventos descargados en formato JSON.`
     });
   };
 
@@ -79,7 +93,8 @@ export const AuditoriaScreen: React.FC = () => {
 
         <button
           onClick={handleExport}
-          className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors"
+          disabled={filteredEvents.length === 0}
+          className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Download className="w-4 h-4 text-purple-400" />
           <span>Exportar Bitácora (JSON)</span>
@@ -143,6 +158,15 @@ export const AuditoriaScreen: React.FC = () => {
 
       {/* Events Timeline / Feed */}
       <div className="space-y-3">
+        {filteredEvents.length === 0 && (
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+            <ScrollText className="mx-auto h-7 w-7 text-slate-500" />
+            <h3 className="mt-3 text-sm font-bold text-slate-200">Aún no hay eventos de auditoría</h3>
+            <p className="mx-auto mt-2 max-w-lg text-xs leading-relaxed text-slate-400">
+              La bitácora se genera automáticamente cuando se crean o modifican registros reales. No se permite fabricar eventos manualmente.
+            </p>
+          </div>
+        )}
         {filteredEvents.map(evt => {
           const isUser = evt.actorType === 'user';
           const isCrit = evt.risk === 'critical';
