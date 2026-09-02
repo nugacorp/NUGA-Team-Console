@@ -174,3 +174,15 @@ Rutas fuente protegidas por sesión:
 Estas rutas conservan el contrato Hermes sin inventar extensiones visuales. La
 ruta compuesta `/api/v1/tasks` permanece cerrada hasta incorporar de forma
 explícita los campos derivados y la persistencia propia de NUGA Console.
+
+## 11. Asistencia de escritura MiniMax
+
+`POST /api/v1/ai/writing-assist` mejora borradores de objetivos de proyecto,
+campaña y notas administrativas. Requiere sesión, origen autorizado y CSRF.
+La clave MiniMax existe únicamente en el entorno del backend.
+
+El endpoint acepta entre 10 y 2000 caracteres, limita solicitudes, aplica
+timeout y ordena conservar estrictamente los hechos aportados. No puede
+inventar nombres, cifras, fechas, presupuestos, clientes, métricas o resultados.
+La auditoría registra proveedor, modelo y longitudes, pero no guarda el texto
+redactado ni la credencial.

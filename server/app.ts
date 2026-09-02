@@ -26,6 +26,11 @@ import {
 } from './contracts';
 import { HermesReadOnlyAdapter, HermesReadOnlyError } from './hermesReadOnlyAdapter';
 import { SupabaseConsoleAdapter, SupabaseConsoleError } from './supabaseConsoleAdapter';
+import {
+  MiniMaxWritingAdapter,
+  MiniMaxWritingError,
+  WritingContext
+} from './miniMaxWritingAdapter';
 import { SERVER_SETTINGS, TEAM_PROFILES } from './readModels';
 import type { AgentProfile } from '../src/types';
 
@@ -38,6 +43,7 @@ function getSession(response: Response): AuthSession | null {
 export interface AppDependencies {
   hermesAdapter?: HermesReadOnlyAdapter;
   supabaseAdapter?: SupabaseConsoleAdapter;
+  writingAdapter?: MiniMaxWritingAdapter;
   frontendDirectory?: string | null;
 }
 
@@ -68,6 +74,17 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
         })
       : null
   );
+  const writingAdapter = dependencies.writingAdapter ?? (
+    config.aiWritingEnabled
+      ? new MiniMaxWritingAdapter({
+          apiKey: config.minimaxApiKey,
+          model: config.minimaxModel,
+          baseUrl: config.minimaxBaseUrl,
+          timeoutMs: 15_000
+        })
+      : null
+  );
+  const writingRequestTimes: number[] = [];
 
   app.disable('x-powered-by');
   app.use(express.json({ limit: '256kb', strict: true }));
@@ -406,6 +423,76 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
     consoleOperation(() => supabaseAdapter!.create('deliverables', request.body as Record<string, unknown>))(request, response)
   );
   app.get(`${API_PREFIX}/audit/events`, requireSession, consoleOperation(() => supabaseAdapter!.list('audit_events')));
+
+  app.post(`${API_PREFIX}/ai/writing-assist`, requireSession, requireCsrf, async (request, response) => {
+    if (!writingAdapter) {
+      response.status(503).json(apiError('AI_WRITING_NOT_CONFIGURED', 'La asistencia de escritura no está configurada.'));
+      return;
+    }
+
+    const body = request.body as Record<string, unknown>;
+    const allowedContexts: WritingContext[] = ['project_objective', 'campaign_objective', 'admin_notes'];
+    const context = body.context;
+    const draft = typeof body.draft === 'string' ? body.draft.trim() : '';
+    const title = typeof body.title === 'string' ? body.title.trim() : undefined;
+    const category = typeof body.category === 'string' ? body.category.trim() : undefined;
+    if (!allowedContexts.includes(context as WritingContext) || draft.length < 10 || draft.length > 2_000) {
+      response.status(400).json(apiError('INVALID_WRITING_REQUEST', 'El borrador debe contener entre 10 y 2000 caracteres.'));
+      return;
+    }
+    if ((title?.length ?? 0) > 200 || (category?.length ?? 0) > 100) {
+      response.status(400).json(apiError('INVALID_WRITING_REQUEST', 'El contexto excede el límite permitido.'));
+      return;
+    }
+
+    const now = Date.now();
+    while (writingRequestTimes.length && writingRequestTimes[0] < now - 300_000) {
+      writingRequestTimes.shift();
+    }
+    if (writingRequestTimes.length >= 20) {
+      response.status(429).json(apiError('AI_RATE_LIMITED', 'Se alcanzó el límite temporal de asistencia de escritura.'));
+      return;
+    }
+    writingRequestTimes.push(now);
+
+    try {
+      const suggestion = await writingAdapter.improve({
+        context: context as WritingContext,
+        draft,
+        title,
+        category
+      });
+      const correlationId = response.getHeader('x-request-id')?.toString() || randomUUID();
+      if (supabaseAdapter) {
+        try {
+          await supabaseAdapter.create('audit_events', {
+            actor: config.ownerUsername,
+            action: 'ai_writing_assistance_requested',
+            resource_type: 'writing_assistance',
+            resource_id: context,
+            outcome: 'success',
+            risk: 'low',
+            correlation_id: correlationId,
+            details: {
+              provider: 'minimax',
+              model: config.minimaxModel,
+              input_characters: draft.length,
+              output_characters: suggestion.length
+            }
+          });
+        } catch {
+          // The suggestion remains usable; audit storage health is reported elsewhere.
+        }
+      }
+      response.status(200).json({ suggestion, provider: 'minimax', model: config.minimaxModel });
+    } catch (error) {
+      const invalid = error instanceof MiniMaxWritingError && error.code === 'INVALID_RESPONSE';
+      response.status(503).json(apiError(
+        invalid ? 'AI_INVALID_RESPONSE' : 'AI_UNAVAILABLE',
+        invalid ? 'La IA devolvió una sugerencia inválida.' : 'La asistencia de escritura no está disponible.'
+      ));
+    }
+  });
 
   const mapProjectInput = (body: Record<string, unknown>) => ({
     code: body.code,

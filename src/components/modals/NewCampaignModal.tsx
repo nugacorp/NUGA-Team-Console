@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, X, CheckCircle2, DollarSign } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { AiWritingAssistant } from '../forms/AiWritingAssistant';
 
 export const NewCampaignModal: React.FC = () => {
   const { activeModal, closeModal, createCampaign } = useApp();
@@ -106,6 +107,13 @@ export const NewCampaignModal: React.FC = () => {
               onChange={e => setObjective(e.target.value)}
               placeholder="Detalla la propuesta de valor y meta de conversión..."
               className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-fuchsia-500"
+            />
+            <AiWritingAssistant
+              context="campaign_objective"
+              draft={objective}
+              title={name}
+              category="marketing"
+              onAccept={setObjective}
             />
           </div>
 

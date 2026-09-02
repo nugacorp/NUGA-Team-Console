@@ -15,6 +15,10 @@ export interface ServerConfig {
   supabaseUrl: string;
   supabaseSecretKey: string;
   supabaseSchema: 'nuga_console' | 'nuga_console_production';
+  aiWritingEnabled: boolean;
+  minimaxApiKey: string;
+  minimaxModel: string;
+  minimaxBaseUrl: string;
 }
 
 export class ServerConfigurationError extends Error {
@@ -129,6 +133,27 @@ export function loadServerConfig(
     }
   }
 
+  const aiWritingEnabled = environment.NUGA_AI_WRITING_ENABLED === 'true';
+  const minimaxApiKey = environment.NUGA_MINIMAX_API_KEY?.trim() ?? '';
+  const minimaxModel = environment.NUGA_MINIMAX_MODEL?.trim() || 'MiniMax-M2.7';
+  const minimaxBaseUrl = environment.NUGA_MINIMAX_BASE_URL?.trim() || 'https://api.minimax.io';
+  if (aiWritingEnabled) {
+    if (minimaxApiKey.length < 16) {
+      throw new ServerConfigurationError(
+        'NUGA_MINIMAX_API_KEY es obligatoria cuando la asistencia de escritura está habilitada.'
+      );
+    }
+    let parsedMiniMaxUrl: URL;
+    try {
+      parsedMiniMaxUrl = new URL(minimaxBaseUrl);
+    } catch {
+      throw new ServerConfigurationError('NUGA_MINIMAX_BASE_URL debe ser una URL HTTPS válida.');
+    }
+    if (parsedMiniMaxUrl.protocol !== 'https:') {
+      throw new ServerConfigurationError('NUGA_MINIMAX_BASE_URL debe usar HTTPS.');
+    }
+  }
+
   return {
     mode: parseServerMode(environment.NUGA_SERVER_MODE),
     host: environment.NUGA_SERVER_HOST || '127.0.0.1',
@@ -143,6 +168,10 @@ export function loadServerConfig(
     supabaseEnabled,
     supabaseUrl,
     supabaseSecretKey,
-    supabaseSchema: expectedSupabaseSchema
+    supabaseSchema: expectedSupabaseSchema,
+    aiWritingEnabled,
+    minimaxApiKey,
+    minimaxModel,
+    minimaxBaseUrl
   };
 }

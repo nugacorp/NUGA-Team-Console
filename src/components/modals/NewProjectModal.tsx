@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FolderKanban, X, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AgentRole, Project } from '../../types';
+import { AiWritingAssistant } from '../forms/AiWritingAssistant';
 
 export const NewProjectModal: React.FC = () => {
   const { activeModal, closeModal, createProject } = useApp();
@@ -35,7 +36,16 @@ export const NewProjectModal: React.FC = () => {
       </div>
       <form onSubmit={submit} className="p-5 space-y-4 text-xs">
         <input required value={name} onChange={e=>setName(e.target.value)} placeholder="Nombre del proyecto" className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700"/>
-        <textarea required rows={3} value={objective} onChange={e=>setObjective(e.target.value)} placeholder="Objetivo verificable" className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700"/>
+        <div>
+          <textarea required rows={3} value={objective} onChange={e=>setObjective(e.target.value)} placeholder="Objetivo verificable" className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700"/>
+          <AiWritingAssistant
+            context="project_objective"
+            draft={objective}
+            title={name}
+            category={category}
+            onAccept={setObjective}
+          />
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <select value={category} onChange={e=>setCategory(e.target.value as Project['category'])} className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700"><option value="wisp">WISP</option><option value="nugacore">NugaCore</option><option value="marketing">Marketing</option><option value="admin">Administración</option></select>
           <input required value={owner} onChange={e=>setOwner(e.target.value)} placeholder="Responsable" className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700"/>
