@@ -179,7 +179,8 @@ explícita los campos derivados y la persistencia propia de NUGA Console.
 
 `POST /api/v1/ai/writing-assist` mejora borradores de objetivos de proyecto,
 campaña y notas administrativas. Requiere sesión, origen autorizado y CSRF.
-La clave MiniMax existe únicamente en el entorno del backend.
+La credencial OAuth se obtiene en cada solicitud mediante el proveedor renovable
+de Hermes. Los tokens nunca se envían al navegador ni se copian al entorno NUGA.
 
 El endpoint acepta entre 10 y 2000 caracteres, limita solicitudes, aplica
 timeout y ordena conservar estrictamente los hechos aportados. No puede

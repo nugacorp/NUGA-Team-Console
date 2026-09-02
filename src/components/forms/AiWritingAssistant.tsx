@@ -47,7 +47,7 @@ export const AiWritingAssistant: React.FC<AiWritingAssistantProps> = ({
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'No fue posible mejorar el texto.');
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      if (controllerRef.current === controller) setLoading(false);
     }
   }, [category, context, draft, loading, title]);
 
@@ -60,7 +60,7 @@ export const AiWritingAssistant: React.FC<AiWritingAssistantProps> = ({
   useEffect(() => {
     if (!suggestion) return;
     const acceptWithTab = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+      if (event.key !== 'Tab' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || !(event.target instanceof HTMLTextAreaElement)) return;
       event.preventDefault();
       onAccept(suggestion);
       setSuggestion('');

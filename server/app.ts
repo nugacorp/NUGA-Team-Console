@@ -77,9 +77,9 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   const writingAdapter = dependencies.writingAdapter ?? (
     config.aiWritingEnabled
       ? new MiniMaxWritingAdapter({
-          apiKey: config.minimaxApiKey,
+          pythonBinary: config.minimaxPythonBinary,
+          hermesSourceDirectory: config.hermesSourceDirectory,
           model: config.minimaxModel,
-          baseUrl: config.minimaxBaseUrl,
           timeoutMs: 15_000
         })
       : null

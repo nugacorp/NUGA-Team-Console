@@ -36,9 +36,9 @@ function testConfig(): ServerConfig {
     supabaseSecretKey: '',
     supabaseSchema: 'nuga_console',
     aiWritingEnabled: false,
-    minimaxApiKey: '',
-    minimaxModel: 'MiniMax-M2.7',
-    minimaxBaseUrl: 'https://api.minimax.io'
+    minimaxPythonBinary: '/usr/bin/python3',
+    hermesSourceDirectory: '/home/ramiro/.hermes/hermes-agent',
+    minimaxModel: 'MiniMax-M3'
   };
 }
 
@@ -127,7 +127,7 @@ describe('NUGA Console API staging foundation', () => {
     })).toThrow(/nuga_console/);
   });
 
-  it('requires a protected MiniMax key when writing assistance is enabled', () => {
+  it('requires absolute Hermes OAuth runtime paths when writing assistance is enabled', () => {
     const base = {
       NUGA_SERVER_MODE: 'production',
       NUGA_PUBLIC_ORIGIN: 'https://10.147.20.10',
@@ -136,14 +136,14 @@ describe('NUGA Console API staging foundation', () => {
       NUGA_OWNER_PASSWORD_HASH: TEST_HASH,
       NUGA_AI_WRITING_ENABLED: 'true'
     };
-    expect(() => loadServerConfig(base)).toThrow(/NUGA_MINIMAX_API_KEY/);
+    expect(() => loadServerConfig({ ...base, NUGA_MINIMAX_PYTHON: 'python3' })).toThrow(/absolutas/);
     expect(loadServerConfig({
       ...base,
-      NUGA_MINIMAX_API_KEY: 'minimax-secret-test-key'
+      NUGA_MINIMAX_PYTHON: '/usr/bin/python3'
     })).toMatchObject({
       aiWritingEnabled: true,
-      minimaxModel: 'MiniMax-M2.7',
-      minimaxBaseUrl: 'https://api.minimax.io'
+      minimaxModel: 'MiniMax-M3',
+      minimaxPythonBinary: '/usr/bin/python3'
     });
   });
 
@@ -370,7 +370,7 @@ describe('NUGA Console API staging foundation', () => {
     await expect(accepted.json()).resolves.toEqual({
       suggestion: 'Convertir el borrador en un objetivo claro y verificable.',
       provider: 'minimax',
-      model: 'MiniMax-M2.7'
+      model: 'MiniMax-M3'
     });
   });
 
