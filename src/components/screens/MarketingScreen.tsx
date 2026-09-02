@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Campaign, MediaAsset } from '../../types';
+import { WorkflowPlanPanel } from '../workflow/WorkflowPlanPanel';
 
 export const MarketingScreen: React.FC = () => {
   const {
@@ -236,6 +237,7 @@ export const MarketingScreen: React.FC = () => {
                   </div>
                 </div>
               </div>
+              <WorkflowPlanPanel resourceType="campaign" resourceId={selectedCampaign.id} />
             </div>
           )}
         </div>

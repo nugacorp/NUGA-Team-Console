@@ -10,23 +10,23 @@ export const NewCampaignModal: React.FC = () => {
 
   const [name, setName] = useState('');
   const [objective, setObjective] = useState('');
-  const [budgetUsd, setBudgetUsd] = useState(1500);
-  const [targetAudience, setTargetAudience] = useState('Hogares y pymes en zona de cobertura WISP');
+  const [budgetUsd, setBudgetUsd] = useState('');
+  const [targetAudience, setTargetAudience] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !objective.trim() || !targetAudience.trim()) return;
 
     const suffix = crypto.randomUUID().slice(0, 8).toUpperCase();
     createCampaign({
       code: `CAM-${suffix}`,
       name: name.trim(),
-      objective: objective.trim() || 'Atracción de prospectos calificados para servicio de conectividad.',
+      objective: objective.trim(),
       status: 'draft',
-      simulatedBudgetUsd: Number(budgetUsd) || 1000,
+      simulatedBudgetUsd: budgetUsd ? Number(budgetUsd) : 0,
       spentBudgetUsd: 0,
       scheduleDateRange: `${new Date().toISOString().slice(0, 10)} — por definir`,
-      channels: ['meta_ads', 'tiktok'],
+      channels: [],
       targetAudience: targetAudience.trim(),
       valueProposition: objective.trim(),
       creativeStage: 'brief',
@@ -83,7 +83,7 @@ export const NewCampaignModal: React.FC = () => {
               <input
                 type="number"
                 value={budgetUsd}
-                onChange={e => setBudgetUsd(Number(e.target.value))}
+                onChange={e => setBudgetUsd(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-fuchsia-500"
               />
             </div>
@@ -92,6 +92,7 @@ export const NewCampaignModal: React.FC = () => {
               <label className="font-bold text-slate-300 block mb-1">Público Objetivo:</label>
               <input
                 type="text"
+                required
                 value={targetAudience}
                 onChange={e => setTargetAudience(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-fuchsia-500"
@@ -103,6 +104,7 @@ export const NewCampaignModal: React.FC = () => {
             <label className="font-bold text-slate-300 block mb-1">Objetivo Estratégico:</label>
             <textarea
               rows={3}
+              required
               value={objective}
               onChange={e => setObjective(e.target.value)}
               placeholder="Detalla la propuesta de valor y meta de conversión..."

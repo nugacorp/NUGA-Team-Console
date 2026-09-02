@@ -566,23 +566,125 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
     notes: row.notes, isDemo: false
   });
 
+  const mapWorkflowOutput = (row: Record<string, unknown>) => ({
+    id: row.id, resourceType: row.resource_type, resourceId: row.resource_id,
+    resourceTitle: row.resource_title, status: row.status,
+    recommendedAgent: row.recommended_agent, objectiveSummary: row.objective_summary,
+    questions: row.questions, answers: row.answers, proposedTasks: row.proposed_tasks,
+    risks: row.risks, approvalNote: row.approval_note,
+    approvedBy: row.approved_by, approvedAt: row.approved_at,
+    createdAt: row.created_at, updatedAt: row.updated_at, isDemo: false
+  });
+  const workflowWritePayload = (row: Record<string, unknown>) => ({
+    resource_type: row.resource_type, resource_id: row.resource_id,
+    resource_title: row.resource_title, status: row.status,
+    recommended_agent: row.recommended_agent, objective_summary: row.objective_summary,
+    questions: row.questions, answers: row.answers, proposed_tasks: row.proposed_tasks,
+    risks: row.risks, approval_note: row.approval_note,
+    approved_by: row.approved_by, approved_at: row.approved_at
+  });
+  const createWorkflowAnalysis = async (
+    resourceType: 'project' | 'campaign' | 'admin_item',
+    resourceId: string,
+    title: string,
+    objective: string,
+    category?: string
+  ) => {
+    if (!writingAdapter || !supabaseAdapter) return null;
+    const analysis = await writingAdapter.analyzeWorkflow({ resourceType, title, objective, category });
+    const status = analysis.questions.some(question => question.required) ? 'needs_info' : 'pending_approval';
+    const rows = await supabaseAdapter.upsertWorkflowPlan({
+      resource_type: resourceType, resource_id: resourceId, resource_title: title,
+      status, recommended_agent: analysis.recommendedAgent,
+      objective_summary: analysis.objectiveSummary, questions: analysis.questions,
+      answers: {}, proposed_tasks: analysis.proposedTasks, risks: analysis.risks
+    });
+    return rows[0] ? mapWorkflowOutput(rows[0]) : null;
+  };
+
+  app.get(`${API_PREFIX}/workflow-plans/:resourceType/:resourceId`, requireSession, (request, response) =>
+    consoleOperation(async () => {
+      const rows = await supabaseAdapter!.getWorkflowPlan(request.params.resourceType, request.params.resourceId);
+      return rows[0] ? mapWorkflowOutput(rows[0]) : null;
+    })(request, response)
+  );
+  app.post(`${API_PREFIX}/workflow-plans/:resourceType/:resourceId/answer`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(async () => {
+      const rows = await supabaseAdapter!.getWorkflowPlan(request.params.resourceType, request.params.resourceId);
+      if (!rows[0]) throw new SupabaseConsoleError('DENIED', 'El plan no existe.');
+      const body = request.body as Record<string, unknown>;
+      const questionId = typeof body.questionId === 'string' ? body.questionId.trim() : '';
+      const answer = typeof body.answer === 'string' ? body.answer.trim() : '';
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(questionId) || answer.length < 1 || answer.length > 2000) throw new SupabaseConsoleError('DENIED', 'La respuesta no es válida.');
+      const existing = rows[0];
+      const answers = existing.answers && typeof existing.answers === 'object' && !Array.isArray(existing.answers) ? existing.answers as Record<string, unknown> : {};
+      const questions = Array.isArray(existing.questions) ? existing.questions : [];
+      const nextAnswers = { ...answers, [questionId]: answer };
+      const allAnswered = questions.filter(q => q && typeof q === 'object' && (q as Record<string, unknown>).required === true).every(q => typeof nextAnswers[String((q as Record<string, unknown>).id)] === 'string');
+      const saved = await supabaseAdapter!.upsertWorkflowPlan({ ...workflowWritePayload(existing), answers: nextAnswers, status: allAnswered ? 'pending_approval' : 'needs_info' });
+      await supabaseAdapter!.create('audit_events', {
+        actor: config.ownerUsername, action: 'workflow_question_answered',
+        resource_type: request.params.resourceType, resource_id: request.params.resourceId,
+        outcome: 'success', risk: 'low', correlation_id: randomUUID(),
+        details: { workflow_plan_id: existing.id, question_id: questionId, answer_characters: answer.length }
+      });
+      return mapWorkflowOutput(saved[0]);
+    })(request, response)
+  );
+  app.post(`${API_PREFIX}/workflow-plans/:resourceType/:resourceId/decision`, requireSession, requireCsrf, (request, response) =>
+    consoleOperation(async () => {
+      const rows = await supabaseAdapter!.getWorkflowPlan(request.params.resourceType, request.params.resourceId);
+      if (!rows[0]) throw new SupabaseConsoleError('DENIED', 'El plan no existe.');
+      const body = request.body as Record<string, unknown>;
+      const action = body.action === 'approve' ? 'approved' : body.action === 'reject' ? 'rejected' : null;
+      const note = typeof body.note === 'string' ? body.note.trim().slice(0, 2000) : '';
+      if (!action || rows[0].status !== 'pending_approval') throw new SupabaseConsoleError('DENIED', 'La decisión no está permitida.');
+      const saved = await supabaseAdapter!.upsertWorkflowPlan({
+        ...workflowWritePayload(rows[0]), status: action, approval_note: note || null,
+        approved_by: config.ownerUsername, approved_at: new Date().toISOString()
+      });
+      await supabaseAdapter!.create('audit_events', {
+        actor: config.ownerUsername, action: `workflow_${action}`,
+        resource_type: request.params.resourceType, resource_id: request.params.resourceId,
+        outcome: 'success', risk: 'low', correlation_id: randomUUID(),
+        details: { workflow_plan_id: rows[0].id }
+      });
+      return mapWorkflowOutput(saved[0]);
+    })(request, response)
+  );
+
   app.get(`${API_PREFIX}/projects`, requireSession, consoleOperation(async () =>
     (await supabaseAdapter!.list('projects')).map(mapProjectOutput)
   ));
   app.post(`${API_PREFIX}/projects`, requireSession, requireCsrf, (request, response) =>
-    consoleOperation(async () => mapProjectOutput((await supabaseAdapter!.create('projects', mapProjectInput(request.body as Record<string, unknown>)))[0]))(request, response)
+    consoleOperation(async () => {
+      const row = (await supabaseAdapter!.create('projects', mapProjectInput(request.body as Record<string, unknown>)))[0];
+      const project = mapProjectOutput(row);
+      try { await createWorkflowAnalysis('project', String(row.id), String(row.name), String(row.objective), String(row.category)); } catch { /* creation remains valid; analysis can be retried later */ }
+      return project;
+    })(request, response)
   );
   app.get(`${API_PREFIX}/marketing/campaigns`, requireSession, consoleOperation(async () =>
     (await supabaseAdapter!.list('campaigns')).map(mapCampaignOutput)
   ));
   app.post(`${API_PREFIX}/marketing/campaigns`, requireSession, requireCsrf, (request, response) =>
-    consoleOperation(async () => mapCampaignOutput((await supabaseAdapter!.create('campaigns', mapCampaignInput(request.body as Record<string, unknown>)))[0]))(request, response)
+    consoleOperation(async () => {
+      const row = (await supabaseAdapter!.create('campaigns', mapCampaignInput(request.body as Record<string, unknown>)))[0];
+      const campaign = mapCampaignOutput(row);
+      try { await createWorkflowAnalysis('campaign', String(row.id), String(row.name), String(row.objective), 'marketing'); } catch { /* fail closed without losing the record */ }
+      return campaign;
+    })(request, response)
   );
   app.get(`${API_PREFIX}/admin/items`, requireSession, consoleOperation(async () =>
     (await supabaseAdapter!.list('admin_items')).map(mapAdminOutput)
   ));
   app.post(`${API_PREFIX}/admin/items`, requireSession, requireCsrf, (request, response) =>
-    consoleOperation(async () => mapAdminOutput((await supabaseAdapter!.create('admin_items', mapAdminInput(request.body as Record<string, unknown>)))[0]))(request, response)
+    consoleOperation(async () => {
+      const row = (await supabaseAdapter!.create('admin_items', mapAdminInput(request.body as Record<string, unknown>)))[0];
+      const item = mapAdminOutput(row);
+      try { await createWorkflowAnalysis('admin_item', String(row.id), String(row.title), String(row.notes || row.title), String(row.category)); } catch { /* fail closed without losing the record */ }
+      return item;
+    })(request, response)
   );
 
   // Explicit read models for modules that are not connected yet. Returning an

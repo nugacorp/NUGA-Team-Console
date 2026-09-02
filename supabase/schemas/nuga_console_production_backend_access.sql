@@ -11,7 +11,8 @@ grant select, insert, update
      nuga_console_production.deliverables,
      nuga_console_production.projects,
      nuga_console_production.campaigns,
-     nuga_console_production.admin_items
+     nuga_console_production.admin_items,
+     nuga_console_production.workflow_plans
   to service_role;
 
 grant select, insert

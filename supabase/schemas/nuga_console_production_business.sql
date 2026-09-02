@@ -46,19 +46,44 @@ create table if not exists nuga_console_production.admin_items (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 
+create table if not exists nuga_console_production.workflow_plans (
+  id uuid primary key default gen_random_uuid(),
+  resource_type text not null check (resource_type in ('project','campaign','admin_item')),
+  resource_id uuid not null,
+  resource_title text not null check (length(resource_title) between 1 and 240),
+  status text not null default 'draft' check (status in ('draft','needs_info','pending_approval','approved','rejected')),
+  recommended_agent text not null check (recommended_agent in ('director','nugacore','operaciones','marketing','administracion')),
+  objective_summary text not null check (length(objective_summary) between 1 and 2000),
+  questions jsonb not null default '[]'::jsonb check (jsonb_typeof(questions) = 'array'),
+  answers jsonb not null default '{}'::jsonb check (jsonb_typeof(answers) = 'object'),
+  proposed_tasks jsonb not null default '[]'::jsonb check (jsonb_typeof(proposed_tasks) = 'array'),
+  risks jsonb not null default '[]'::jsonb check (jsonb_typeof(risks) = 'array'),
+  approval_note text,
+  approved_by text,
+  approved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (resource_type, resource_id)
+);
+
 alter table nuga_console_production.projects enable row level security;
 alter table nuga_console_production.projects force row level security;
 alter table nuga_console_production.campaigns enable row level security;
 alter table nuga_console_production.campaigns force row level security;
 alter table nuga_console_production.admin_items enable row level security;
 alter table nuga_console_production.admin_items force row level security;
+alter table nuga_console_production.workflow_plans enable row level security;
+alter table nuga_console_production.workflow_plans force row level security;
 
 grant select, insert, update on nuga_console_production.projects,
   nuga_console_production.campaigns, nuga_console_production.admin_items to service_role;
+grant select, insert, update on nuga_console_production.workflow_plans to service_role;
 revoke all on nuga_console_production.projects,
   nuga_console_production.campaigns, nuga_console_production.admin_items from public, anon, authenticated;
+revoke all on nuga_console_production.workflow_plans from public, anon, authenticated;
 revoke delete, truncate on nuga_console_production.projects,
   nuga_console_production.campaigns, nuga_console_production.admin_items from service_role;
+revoke delete, truncate on nuga_console_production.workflow_plans from service_role;
 
 create or replace function nuga_console_production.audit_business_insert()
 returns trigger language plpgsql security invoker set search_path = '' as $$

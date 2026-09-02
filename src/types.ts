@@ -3,6 +3,30 @@ export type PriorityLevel = 'baja' | 'media' | 'alta' | 'urgente';
 
 export type AgentRole = 'director' | 'nugacore' | 'operaciones' | 'marketing' | 'administracion';
 
+export type WorkflowResourceType = 'project' | 'campaign' | 'admin_item';
+export type WorkflowPlanStatus = 'draft' | 'needs_info' | 'pending_approval' | 'approved' | 'rejected';
+export interface WorkflowQuestion { id: string; question: string; required: boolean; }
+export interface WorkflowTaskProposal { id: string; title: string; description: string; assignedAgent: AgentRole; requiresApproval: boolean; }
+export interface WorkflowPlan {
+  id: string;
+  resourceType: WorkflowResourceType;
+  resourceId: string;
+  resourceTitle: string;
+  status: WorkflowPlanStatus;
+  recommendedAgent: AgentRole;
+  objectiveSummary: string;
+  questions: WorkflowQuestion[];
+  answers: Record<string, string>;
+  proposedTasks: WorkflowTaskProposal[];
+  risks: string[];
+  approvalNote?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDemo?: boolean;
+}
+
 export type HermesStatus = 'No conectado' | 'Disponible' | 'Sincronizando' | 'Procesando tarea' | 'Atención requerida' | 'Error';
 
 export interface User {

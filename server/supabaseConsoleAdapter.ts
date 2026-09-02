@@ -6,7 +6,8 @@ export type ConsoleTable =
   | 'audit_events'
   | 'projects'
   | 'campaigns'
-  | 'admin_items';
+  | 'admin_items'
+  | 'workflow_plans';
 
 export interface SupabaseConsoleAdapterOptions {
   url: string;
@@ -59,6 +60,7 @@ const writableKeys = {
   projects: ['code', 'name', 'category', 'objective', 'owner', 'team', 'status', 'progress_percent', 'start_date', 'target_end_date', 'risks', 'milestones', 'budget_estimate_usd', 'summary_executive', 'deliverables_count'],
   campaigns: ['code', 'name', 'objective', 'target_audience', 'value_proposition', 'channels', 'budget_usd', 'spent_budget_usd', 'schedule_date_range', 'status', 'creative_stage', 'variants_count', 'metrics', 'requires_approval', 'assigned_agent'],
   admin_items: ['title', 'category', 'responsible', 'agent_assigned', 'deadline', 'status', 'priority', 'amount_usd', 'evidence_ref', 'notes'],
+  workflow_plans: ['resource_type', 'resource_id', 'resource_title', 'status', 'recommended_agent', 'objective_summary', 'questions', 'answers', 'proposed_tasks', 'risks', 'approval_note', 'approved_by', 'approved_at'],
   decisions: [
     'code', 'title', 'specialist', 'project_id', 'hermes_board_slug',
     'hermes_task_id', 'priority', 'risk', 'status', 'impact',
@@ -178,6 +180,26 @@ export class SupabaseConsoleAdapter {
     return this.call('POST', table, {
       prefer: 'return=representation',
       body: allowlistedPayload(table, value)
+    });
+  }
+
+  getWorkflowPlan(resourceType: string, resourceId: string) {
+    return this.call('GET', 'workflow_plans', {
+      query: {
+        select: '*',
+        resource_type: `eq.${assertIdentifier(resourceType, 'resourceType')}`,
+        resource_id: `eq.${assertIdentifier(resourceId, 'resourceId')}`,
+        limit: '1'
+      }
+    });
+  }
+
+  upsertWorkflowPlan(value: Record<string, unknown>) {
+    const payload = allowlistedPayload('workflow_plans', value);
+    return this.call('POST', 'workflow_plans', {
+      query: { on_conflict: 'resource_type,resource_id' },
+      prefer: 'resolution=merge-duplicates,return=representation',
+      body: payload
     });
   }
 
