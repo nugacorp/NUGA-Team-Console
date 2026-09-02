@@ -16,9 +16,9 @@ export interface ServerConfig {
   supabaseSecretKey: string;
   supabaseSchema: 'nuga_console' | 'nuga_console_production';
   aiWritingEnabled: boolean;
-  minimaxApiKey: string;
+  minimaxPythonBinary: string;
+  hermesSourceDirectory: string;
   minimaxModel: string;
-  minimaxBaseUrl: string;
 }
 
 export class ServerConfigurationError extends Error {
@@ -134,24 +134,11 @@ export function loadServerConfig(
   }
 
   const aiWritingEnabled = environment.NUGA_AI_WRITING_ENABLED === 'true';
-  const minimaxApiKey = environment.NUGA_MINIMAX_API_KEY?.trim() ?? '';
-  const minimaxModel = environment.NUGA_MINIMAX_MODEL?.trim() || 'MiniMax-M2.7';
-  const minimaxBaseUrl = environment.NUGA_MINIMAX_BASE_URL?.trim() || 'https://api.minimax.io';
+  const minimaxPythonBinary = environment.NUGA_MINIMAX_PYTHON?.trim() || '/usr/bin/python3';
+  const hermesSourceDirectory = environment.NUGA_HERMES_SOURCE_DIRECTORY?.trim() || '/home/ramiro/.hermes/hermes-agent';
+  const minimaxModel = environment.NUGA_MINIMAX_MODEL?.trim() || 'MiniMax-M3';
   if (aiWritingEnabled) {
-    if (minimaxApiKey.length < 16) {
-      throw new ServerConfigurationError(
-        'NUGA_MINIMAX_API_KEY es obligatoria cuando la asistencia de escritura está habilitada.'
-      );
-    }
-    let parsedMiniMaxUrl: URL;
-    try {
-      parsedMiniMaxUrl = new URL(minimaxBaseUrl);
-    } catch {
-      throw new ServerConfigurationError('NUGA_MINIMAX_BASE_URL debe ser una URL HTTPS válida.');
-    }
-    if (parsedMiniMaxUrl.protocol !== 'https:') {
-      throw new ServerConfigurationError('NUGA_MINIMAX_BASE_URL debe usar HTTPS.');
-    }
+    if (!minimaxPythonBinary.startsWith('/') || !hermesSourceDirectory.startsWith('/')) throw new ServerConfigurationError('Las rutas Hermes OAuth deben ser absolutas.');
   }
 
   return {
@@ -170,8 +157,8 @@ export function loadServerConfig(
     supabaseSecretKey,
     supabaseSchema: expectedSupabaseSchema,
     aiWritingEnabled,
-    minimaxApiKey,
+    minimaxPythonBinary,
+    hermesSourceDirectory,
     minimaxModel,
-    minimaxBaseUrl
   };
 }
