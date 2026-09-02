@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Briefcase, X, CheckCircle2, DollarSign } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AdminCategory } from '../../types';
+import { AiWritingAssistant } from '../forms/AiWritingAssistant';
 
 export const NewAdminItemModal: React.FC = () => {
   const { activeModal, closeModal, createAdminItem } = useApp();
@@ -122,6 +123,13 @@ export const NewAdminItemModal: React.FC = () => {
               onChange={e => setNotes(e.target.value)}
               placeholder="Detalle cláusulas clave, enlace de respaldo o contactos..."
               className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-amber-500"
+            />
+            <AiWritingAssistant
+              context="admin_notes"
+              draft={notes}
+              title={title}
+              category={category}
+              onAccept={setNotes}
             />
           </div>
 

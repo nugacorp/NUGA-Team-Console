@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { AppDependencies, createApp } from '../../server/app';
 import { createPasswordHash } from '../../server/auth';
 import { SupabaseConsoleAdapter } from '../../server/supabaseConsoleAdapter';
+import { MiniMaxWritingAdapter } from '../../server/miniMaxWritingAdapter';
 import {
   ServerConfigurationError,
   loadServerConfig,
@@ -33,7 +34,11 @@ function testConfig(): ServerConfig {
     supabaseEnabled: false,
     supabaseUrl: '',
     supabaseSecretKey: '',
-    supabaseSchema: 'nuga_console'
+    supabaseSchema: 'nuga_console',
+    aiWritingEnabled: false,
+    minimaxApiKey: '',
+    minimaxModel: 'MiniMax-M2.7',
+    minimaxBaseUrl: 'https://api.minimax.io'
   };
 }
 
@@ -120,6 +125,26 @@ describe('NUGA Console API staging foundation', () => {
       NUGA_SERVER_MODE: 'staging',
       NUGA_SUPABASE_SCHEMA: 'nuga_console_production'
     })).toThrow(/nuga_console/);
+  });
+
+  it('requires a protected MiniMax key when writing assistance is enabled', () => {
+    const base = {
+      NUGA_SERVER_MODE: 'production',
+      NUGA_PUBLIC_ORIGIN: 'https://10.147.20.10',
+      NUGA_SESSION_SECRET: 'x'.repeat(32),
+      NUGA_OWNER_USERNAME: 'ramiro',
+      NUGA_OWNER_PASSWORD_HASH: TEST_HASH,
+      NUGA_AI_WRITING_ENABLED: 'true'
+    };
+    expect(() => loadServerConfig(base)).toThrow(/NUGA_MINIMAX_API_KEY/);
+    expect(loadServerConfig({
+      ...base,
+      NUGA_MINIMAX_API_KEY: 'minimax-secret-test-key'
+    })).toMatchObject({
+      aiWritingEnabled: true,
+      minimaxModel: 'MiniMax-M2.7',
+      minimaxBaseUrl: 'https://api.minimax.io'
+    });
   });
 
   it('serves a fail-closed staging status without integrations', async () => {
@@ -311,6 +336,42 @@ describe('NUGA Console API staging foundation', () => {
     });
     expect(saved.status).toBe(200);
     await expect(saved.json()).resolves.toMatchObject({ id: 'director', avatar });
+  });
+
+  it('protects AI writing assistance with session and CSRF without exposing credentials', async () => {
+    const improve = async () => 'Convertir el borrador en un objetivo claro y verificable.';
+    const writingAdapter = { improve } as unknown as MiniMaxWritingAdapter;
+    const baseUrl = await startTestServer({ writingAdapter });
+    const loginResponse = await login(baseUrl);
+    const cookie = loginResponse.headers.get('set-cookie') ?? '';
+    const loginBody = await loginResponse.json() as { csrfToken: string };
+    const headers = {
+      cookie,
+      origin: 'http://127.0.0.1:3000',
+      'content-type': 'application/json',
+      'x-nuga-mode': 'staging'
+    };
+    const body = JSON.stringify({
+      context: 'project_objective',
+      draft: 'mejorar la cobertura de la zona norte'
+    });
+
+    const denied = await fetch(`${baseUrl}/api/v1/ai/writing-assist`, {
+      method: 'POST', headers, body
+    });
+    expect(denied.status).toBe(403);
+
+    const accepted = await fetch(`${baseUrl}/api/v1/ai/writing-assist`, {
+      method: 'POST',
+      headers: { ...headers, 'x-csrf-token': loginBody.csrfToken },
+      body
+    });
+    expect(accepted.status).toBe(200);
+    await expect(accepted.json()).resolves.toEqual({
+      suggestion: 'Convertir el borrador en un objetivo claro y verificable.',
+      provider: 'minimax',
+      model: 'MiniMax-M2.7'
+    });
   });
 
   it('requires the session CSRF token to log out', async () => {
