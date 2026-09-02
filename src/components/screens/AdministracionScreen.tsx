@@ -16,12 +16,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AdminItem } from '../../types';
+import { WorkflowPlanPanel } from '../workflow/WorkflowPlanPanel';
 
 export const AdministracionScreen: React.FC = () => {
   const { adminItems, openModal, appMode } = useApp();
 
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
 
   const filteredItems = adminItems.filter(item => {
     if (filterCategory !== 'all' && item.category !== filterCategory) return false;
@@ -122,6 +124,7 @@ export const AdministracionScreen: React.FC = () => {
         {(filteredItems || []).map(item => (
           <div
             key={item.id}
+            onClick={() => setSelectedItemId(item.id)}
             className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col justify-between space-y-4 hover:border-slate-700 transition-all"
           >
             <div>
@@ -175,6 +178,7 @@ export const AdministracionScreen: React.FC = () => {
           </div>
         ))}
       </div>
+      {selectedItemId && <WorkflowPlanPanel resourceType="admin_item" resourceId={selectedItemId} />}
     </div>
   );
 };

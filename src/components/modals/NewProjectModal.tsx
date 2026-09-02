@@ -10,7 +10,7 @@ export const NewProjectModal: React.FC = () => {
   const [objective, setObjective] = useState('');
   const [owner, setOwner] = useState('Ramiro');
   const [category, setCategory] = useState<Project['category']>('wisp');
-  const [targetEndDate, setTargetEndDate] = useState('2026-12-31');
+  const [targetEndDate, setTargetEndDate] = useState('');
   if (activeModal !== 'newProject') return null;
 
   const submit = (event: React.FormEvent) => {

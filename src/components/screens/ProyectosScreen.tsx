@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Project } from '../../types';
+import { WorkflowPlanPanel } from '../workflow/WorkflowPlanPanel';
 
 export const ProyectosScreen: React.FC = () => {
   const {
@@ -132,6 +133,7 @@ export const ProyectosScreen: React.FC = () => {
 
       {/* Selected Project Full Details */}
       {selectedProject && (
+        <>
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
@@ -219,6 +221,8 @@ export const ProyectosScreen: React.FC = () => {
             </div>
           </div>
         </div>
+        <WorkflowPlanPanel resourceType="project" resourceId={selectedProject.id} />
+        </>
       )}
     </div>
   );

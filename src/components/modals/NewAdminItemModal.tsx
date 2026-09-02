@@ -11,14 +11,14 @@ export const NewAdminItemModal: React.FC = () => {
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<AdminCategory>('acuerdo');
-  const [responsible, setResponsible] = useState('Ramiro / Especialista Administración');
-  const [deadline, setDeadline] = useState('2026-09-15');
+  const [responsible, setResponsible] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [amountUsd, setAmountUsd] = useState('');
   const [notes, setNotes] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !responsible.trim() || !deadline) return;
 
     createAdminItem({
       title: title.trim(),
@@ -85,6 +85,7 @@ export const NewAdminItemModal: React.FC = () => {
               <label className="font-bold text-slate-300 block mb-1">Responsable:</label>
               <input
                 type="text"
+                required
                 value={responsible}
                 onChange={e => setResponsible(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-amber-500"
@@ -97,6 +98,7 @@ export const NewAdminItemModal: React.FC = () => {
               <label className="font-bold text-slate-300 block mb-1">Fecha / Plazo:</label>
               <input
                 type="date"
+                required
                 value={deadline}
                 onChange={e => setDeadline(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-amber-500"

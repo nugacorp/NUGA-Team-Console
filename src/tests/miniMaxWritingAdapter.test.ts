@@ -13,4 +13,14 @@ describe('MiniMaxWritingAdapter', () => {
     const adapter = new MiniMaxWritingAdapter(options, async () => '');
     await expect(adapter.improve({ context: 'admin_notes', draft: 'registrar acuerdo real' })).rejects.toMatchObject({ code: 'INVALID_RESPONSE' } satisfies Partial<MiniMaxWritingError>);
   });
+  it('validates a bounded workflow plan without executing it', async () => {
+    const adapter = new MiniMaxWritingAdapter(options, async () => ({
+      recommendedAgent: 'marketing',
+      objectiveSummary: 'Preparar una campaña para revisión humana.',
+      questions: [{ id: 'budget', question: '¿Cuál es el presupuesto aprobado?', required: true }],
+      proposedTasks: [{ id: 'brief', title: 'Preparar brief', description: 'Redactar una propuesta verificable.', assignedAgent: 'marketing', requiresApproval: false }],
+      risks: ['Falta confirmar el presupuesto.']
+    }));
+    await expect(adapter.analyzeWorkflow({ resourceType: 'campaign', title: 'Campaña', objective: 'Preparar una campaña real.' })).resolves.toMatchObject({ recommendedAgent: 'marketing' });
+  });
 });
