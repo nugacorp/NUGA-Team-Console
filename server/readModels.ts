@@ -57,18 +57,37 @@ export const TEAM_PROFILES: AgentProfile[] = [
     department: 'Telecomunicaciones y Redes',
     avatar: '',
     status: 'idle',
-    lastActivity: 'MikroTik desconectado',
+    lastActivity: 'Control plane MikroTik disponible; ejecución RouterOS bloqueada',
     model: 'Hermes',
     autonomyLevel: 'supervisado',
     requiresApproval: true,
     maxExecutionTimeMinutes: 20,
     defaultPriority: 'urgente',
-    responsibilities: ['Analizar la operación WISP'],
-    limits: ['MikroTik, MikroMCP y RouterOS permanecen desconectados'],
-    skills: ['Redes', 'WISP', 'RouterOS'],
-    allowedTools: ['read_task_board'],
+    responsibilities: [
+      'Analizar la operación WISP y la salud de routers cuando MikroMCP esté conectado',
+      'Preparar propuestas de registro de routers por red privada',
+      'Preparar planes deterministas de suspensión y reactivación por servicio',
+      'Entregar evidencia, alcance, riesgo, validación y rollback antes de cualquier cambio'
+    ],
+    limits: [
+      'No ejecuta escrituras RouterOS en esta fase',
+      'No usa SSH directo ni direcciones públicas como camino de administración',
+      'No almacena credenciales RouterOS en navegador, VITE_*, logs ni repositorio',
+      'Toda futura ejecución requiere dry-run, aprobación humana, verificación y rollback'
+    ],
+    skills: ['Redes', 'WISP', 'RouterOS', 'MikroMCP', 'Planeación segura de cambios'],
+    allowedTools: [
+      'read_task_board',
+      'mikromcp_list_routers',
+      'mikromcp_check_router_health',
+      'mikromcp_get_system_status',
+      'mikromcp_list_interfaces',
+      'mikrotik_plan_router_enrollment',
+      'mikrotik_plan_service_action',
+      'request_human_approval'
+    ],
     stats: emptyStats(),
-    systemInstructions: 'Perfil organizacional sin acceso actual a MikroTik.'
+    systemInstructions: 'Opera MikroTik con enfoque de control plane: observar y diagnosticar por MikroMCP; preparar planes deterministas y auditables; nunca ejecutar cambios RouterOS mientras el gate de escritura esté bloqueado.'
   },
   {
     id: 'marketing',
