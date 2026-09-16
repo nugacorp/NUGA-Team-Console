@@ -15,6 +15,7 @@ const mikroMcpAdapter = config.mikroMcpReadOnlyEnabled === true
   : null;
 const coreApp = createApp(config, { mikroMcpAdapter: mikroMcpAdapter ?? undefined });
 const app = express();
+app.disable('x-powered-by');
 
 app.use('/api/v1/wisp', createMikrotikControlPlaneRouter(config, { mikroMcpAdapter }));
 app.use(coreApp);
