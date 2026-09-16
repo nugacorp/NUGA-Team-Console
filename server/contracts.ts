@@ -13,7 +13,7 @@ export interface ApiErrorBody {
 }
 
 export function createServerStatusContract(
-  config: Pick<ServerConfig, 'mode' | 'hermesReadOnlyEnabled'>
+  config: Pick<ServerConfig, 'mode' | 'hermesReadOnlyEnabled' | 'mikroMcpReadOnlyEnabled'>
 ): ServerStatusContract {
   return {
     mode: config.mode,
@@ -22,7 +22,7 @@ export function createServerStatusContract(
     writesEnabled: false,
     integrations: {
       nugacore: false,
-      mikromcp: false,
+      mikromcp: config.mikroMcpReadOnlyEnabled === true,
       google: false
     }
   };
@@ -30,10 +30,11 @@ export function createServerStatusContract(
 
 export function createServerCapabilities(
   _mode: ServerMode,
-  hermesReadOnlyEnabled = false
+  hermesReadOnlyEnabled = false,
+  mikroMcpReadOnlyEnabled = false
 ): BackendCapabilities {
   return {
-    canReadRealData: hermesReadOnlyEnabled,
+    canReadRealData: hermesReadOnlyEnabled || mikroMcpReadOnlyEnabled,
     canRequestDryRun: false,
     canSubmitApproval: false,
     canExecuteAuthorizedOperation: false
