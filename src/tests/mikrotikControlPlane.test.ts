@@ -366,4 +366,46 @@ describe('MikroTik technical control plane', () => {
       executionAllowed: false
     });
   });
+
+  it('returns 400 when enrollment JSON is missing or not parsed', async () => {
+    const baseUrl = await startRouter();
+    const { cookie, session } = sessionHeaders();
+    const headers = {
+      cookie,
+      origin: config.publicOrigin,
+      'x-nuga-mode': 'staging',
+      'x-csrf-token': session.csrfToken
+    };
+
+    const noBody = await fetch(`${baseUrl}/api/v1/wisp/routers/enrollment/plan`, {
+      method: 'POST',
+      headers
+    });
+    expect(noBody.status).toBe(400);
+    await expect(noBody.json()).resolves.toMatchObject({
+      error: {
+        code: 'INVALID_MIKROTIK_ENROLLMENT_PLAN'
+      }
+    });
+
+    const unsupportedContentType = await fetch(`${baseUrl}/api/v1/wisp/routers/enrollment/plan`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'content-type': 'text/plain'
+      },
+      body: JSON.stringify({
+        routerId: 'edge-01',
+        displayName: 'Router de Borde',
+        privateHost: '10.147.20.1',
+        routerOsMajor: '7'
+      })
+    });
+    expect(unsupportedContentType.status).toBe(400);
+    await expect(unsupportedContentType.json()).resolves.toMatchObject({
+      error: {
+        code: 'INVALID_MIKROTIK_ENROLLMENT_PLAN'
+      }
+    });
+  });
 });

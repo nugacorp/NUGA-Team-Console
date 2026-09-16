@@ -147,7 +147,9 @@ export function createMikrotikControlPlaneRouter(
     requireCsrf,
     (request, response) => {
       try {
-        const body = request.body as Partial<MikroTikRouterEnrollmentPlanInput>;
+        const body = typeof request.body === 'object' && request.body !== null
+          ? request.body as Partial<MikroTikRouterEnrollmentPlanInput>
+          : {};
         if (typeof body.isEdgeRouter !== 'boolean') {
           throw new MikroTikControlPlaneValidationError('isEdgeRouter debe ser booleano.');
         }
