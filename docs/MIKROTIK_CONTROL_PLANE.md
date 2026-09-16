@@ -1,97 +1,116 @@
-# MikroTik Control Plane — patrón operativo inspirado en PlenoAgent
+# MikroTik Control Plane — alcance técnico de Hermes
 
 ## Objetivo
 
-Adoptar los patrones operativos útiles publicados por PlenoAgent para la gestión de MikroTik, sin copiar su implementación propietaria y sin introducir acceso SSH paralelo, credenciales en frontend ni escrituras RouterOS no autorizadas.
+Usar patrones operativos útiles observados en herramientas de gestión MikroTik, incluido PlenoAgent, sin convertir NUGA Team Console en CRM, sistema de cobranza o plataforma de ciclo de vida comercial de clientes.
 
-Fuentes públicas revisadas:
+NUGA Team Console coordina agentes técnicos, diagnósticos, marketing, administración y desarrollo. Para MikroTik, su responsabilidad es **observabilidad, diagnóstico, auditoría, mantenimiento y preparación segura de cambios técnicos**.
 
-- https://www.plenoagent.com/docs/finanzas
-- https://www.plenoagent.com/
+La facturación, pagos, estado comercial, suspensión y reactivación de clientes pertenecen a NugaCore/CRM u otros sistemas especializados.
 
-## Qué hace PlenoAgent según su documentación pública
-
-1. Usa un único camino VPN por empresa que termina en un router de borde.
-2. Los demás routers se administran por direcciones privadas alcanzables desde el borde.
-3. Cada router se registra con nombre, host privado, versión RouterOS y tipo de conexión de clientes.
-4. Soporta PPPoE, IP fija, simple queue, Hotspot y address-list para el ciclo de suspensión/reactivación.
-5. Mantiene automatizaciones programadas para salud de red, chequeos de nodos y respaldos.
-6. El ciclo de servicio (vencimiento, suspensión, pago, reactivación) es determinista y no depende de que la IA genere una decisión en tiempo real.
-
-## Adaptación NUGA
-
-NUGA conserva una frontera más restrictiva:
+## Arquitectura
 
 ```text
 Hermes / Operaciones
   -> NUGA Console API
-    -> Control Plane
-       observe -> plan -> simulate -> approve -> execute -> verify -> rollback
+    -> Control Plane técnico
+       observe -> diagnose -> plan -> simulate -> approve -> execute -> verify -> rollback
     -> MikroMCP
       -> red privada / overlay
         -> RouterOS
 ```
 
-### Diferencias deliberadas
+### Frontera de producto
+
+El contrato del control plane declara explícitamente:
+
+- `crm: false`
+- `billing: false`
+- `subscriberLifecycle: false`
+- `commercialSuspension: false`
+- `paymentCollection: false`
+- `technicalOperations: true`
+
+Esto evita que una capacidad técnica de RouterOS sea confundida con una autorización para operar el CRM.
+
+## Principios de seguridad
 
 - No se añade SSH directo desde NUGA a los routers.
 - MikroMCP sigue siendo el único puente RouterOS autorizado.
-- No se almacenan contraseñas RouterOS en navegador, VITE_*, localStorage, logs o repositorio.
+- No se almacenan contraseñas RouterOS en navegador, `VITE_*`, `localStorage`, logs o repositorio.
 - El host de administración propuesto debe ser una IP privada/overlay; una IP pública se rechaza.
-- La IA tiene rol consultivo: observa, diagnostica y prepara planes.
-- La automatización de servicio es determinista, pero la ejecución real continúa bloqueada en esta fase.
+- La IA tiene rol `technical_advisory`: observa, diagnostica y prepara planes.
+- Toda escritura RouterOS real permanece bloqueada hasta una fase expresamente autorizada.
+- Ninguna herramienta de este control plane suspende o reactiva clientes por cobranza, pagos o estado comercial.
 
-## Implementado
+## Capacidades técnicas
 
-### 1. Política del control plane
+`src/networkControl.ts` declara estas capacidades:
 
-`src/networkControl.ts`
+- inventario de routers;
+- salud y recursos;
+- interfaces;
+- diagnóstico de routing;
+- auditoría de firewall;
+- diagnóstico de queues;
+- comparación de configuración;
+- planificación de mantenimiento;
+- planificación de respaldo.
 
-Declara:
+## Registro seguro de routers
 
-- arquitectura `single-edge-private-overlay`;
-- transporte `mikromcp`;
-- acceso público directo deshabilitado;
-- IA en modo `advisory`;
-- flujo obligatorio `observe -> plan -> simulate -> approve -> execute -> verify -> rollback`;
-- dry-run, aprobación humana y rollback obligatorios;
-- ejecución RouterOS deshabilitada.
-
-### 2. Tipos de servicio
-
-El planner conoce cinco mecanismos:
-
-| Tipo | Suspensión propuesta | Reactivación propuesta |
-| --- | --- | --- |
-| PPPoE | deshabilitar identidad del servicio | rehabilitar identidad |
-| IP fija | aplicar estado de corte mediante lista de control | retirar estado de corte |
-| Queue | aplicar estado suspendido a la queue del servicio | restaurar estado previo |
-| Hotspot | deshabilitar usuario | rehabilitar usuario |
-| Address-list | agregar a lista de corte | retirar de lista de corte |
-
-No se generan comandos RouterOS ejecutables todavía.
-
-### 3. Registro seguro de routers
-
-El endpoint de planificación de enrolamiento recibe solamente metadatos:
+El endpoint de planificación de enrolamiento recibe solamente metadatos técnicos:
 
 - `routerId`
 - `displayName`
 - `privateHost`
 - `routerOsMajor` (`6` o `7`)
-- `defaultConnectionType`
 - `managementInterface` opcional
 - `isEdgeRouter`
 
-El planner rechaza direcciones públicas y no acepta ni solicita credenciales.
+No recibe tipo de cliente, plan comercial, deuda, estado de servicio ni credenciales RouterOS.
 
-### 4. Endpoints
+El planner rechaza direcciones públicas y no ejecuta aprovisionamiento.
 
-Montados antes del API principal bajo `/api/v1/wisp`:
+## Planes de cambios técnicos
+
+Los cambios potenciales se clasifican exclusivamente como:
+
+- `routing`
+- `firewall`
+- `queues`
+- `interfaces`
+- `system`
+
+Un plan técnico recibe:
+
+- `routerId`
+- `category`
+- `objective`
+
+Y devuelve obligatoriamente:
+
+- evidencia requerida;
+- alcance;
+- riesgo;
+- efectos propuestos;
+- validación;
+- rollback;
+- `requiresDryRun: true`;
+- `requiresHumanApproval: true`;
+- `executionAllowed: false`.
+
+No genera comandos RouterOS ejecutables en esta fase.
+
+## Endpoints
+
+Montados bajo `/api/v1/wisp`:
 
 - `GET /api/v1/wisp/control-plane`
 - `POST /api/v1/wisp/routers/enrollment/plan`
-- `POST /api/v1/wisp/service-actions/plan`
+- `POST /api/v1/wisp/technical-changes/plan`
+
+Se eliminó deliberadamente el endpoint anterior de acciones de servicio comercial.
 
 Controles:
 
@@ -100,29 +119,37 @@ Controles:
 - POST protegido por Origin + CSRF;
 - JSON limitado a 32 KB;
 - identificadores allowlisted;
-- cero llamadas RouterOS en estos endpoints.
+- cero llamadas RouterOS en estos endpoints de planificación.
 
-### 5. Operaciones / Hermes
+## Operaciones / Hermes
 
-El perfil `Operaciones` ahora declara capacidades de lectura MikroMCP y herramientas de planificación, pero conserva el límite explícito de no escribir RouterOS.
+El agente Operaciones puede:
 
-Herramientas declaradas:
+- consultar inventario MikroMCP;
+- revisar salud del router;
+- consultar recursos del sistema;
+- consultar interfaces;
+- preparar un registro técnico de router;
+- preparar un cambio técnico para revisión;
+- solicitar aprobación humana.
 
-- `mikromcp_list_routers`
-- `mikromcp_check_router_health`
-- `mikromcp_get_system_status`
-- `mikromcp_list_interfaces`
-- `mikrotik_plan_router_enrollment`
-- `mikrotik_plan_service_action`
-- `request_human_approval`
+No puede:
 
-## Automatizaciones
+- facturar o cobrar;
+- cambiar estados comerciales;
+- suspender o reactivar clientes por cobranza;
+- ejecutar RouterOS en esta fase;
+- usar SSH directo;
+- almacenar credenciales RouterOS en frontend, logs o repositorio.
 
-Plantillas declaradas en la política:
+## Automatizaciones técnicas
 
-- `router-health-report`: lectura, habilitable cuando MikroMCP esté conectado.
-- `node-health-check`: lectura, habilitable cuando MikroMCP esté conectado.
-- `router-backup`: futura escritura; permanece bloqueada.
+Plantillas declaradas:
+
+- `router-health-report`: lectura.
+- `node-health-check`: lectura.
+- `configuration-drift-report`: lectura.
+- `router-backup`: futura escritura técnica; permanece bloqueada.
 
 No se crea ningún cron real en esta fase.
 
@@ -134,7 +161,7 @@ No se crea ningún cron real en esta fase.
 - no crea usuarios RouterOS;
 - no habilita SSH/API/API-SSL;
 - no registra secretos;
-- no suspende/reactiva clientes reales;
+- no modifica CRM, facturación, pagos ni estados de clientes;
 - no crea backups reales;
 - no despliega a staging/production.
 
@@ -144,13 +171,15 @@ Revertir el PR restaura el comportamiento anterior. Como esta fase no modifica R
 
 ## Siguiente gate operativo
 
-Una fase posterior, con autorización explícita, podrá enlazar estos planes a herramientas de escritura MikroMCP. Antes de habilitar `execute` será obligatorio validar:
+Una fase posterior, con autorización explícita, podrá ampliar herramientas **técnicas** de MikroMCP. Antes de habilitar cualquier `execute` será obligatorio validar:
 
 1. red privada/overlay y router de borde;
 2. identidad MikroMCP con RBAC mínimo;
 3. inventario y salud de routers;
-4. dry-run real del tipo de operación;
+4. dry-run de la operación técnica;
 5. captura del estado previo;
 6. aprobación humana;
 7. verificación posterior;
 8. rollback probado.
+
+El CRM/NugaCore conserva de forma separada cualquier lógica de clientes, facturación, cobranza o suspensión comercial.
