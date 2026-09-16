@@ -1,51 +1,39 @@
-# MikroMCP integration — Phase 1 (read-only)
+# MikroMCP integration — producción diagnóstica
 
-## Scope
+## Alcance
 
-This phase adds a server-side MikroMCP bridge to NUGA Team Console without enabling any RouterOS mutation.
+Esta integración conecta NUGA Team Console con MikroMCP para realizar **lecturas reales de producción** sobre MikroTik RouterOS 7, sin convertir Team Console en CRM ni habilitar todavía escrituras RouterOS.
 
-Implemented:
+No existe una fase de diagnóstico simulada. Cuando la integración está habilitada, los datos vienen de MikroMCP y del router real.
 
-- MCP Streamable HTTP client inside `server/mikroMcpReadOnlyAdapter.ts`.
-- Bearer token kept only in server configuration.
-- Lazy MCP `initialize` handshake and session handling.
-- Explicit read-tool allowlist:
-  - `list_routers`
-  - `check_router_health`
-  - `get_system_status`
-  - `list_interfaces`
-- Authenticated NUGA API routes for those reads.
-- Mapping from MikroMCP router/system/interface data into the existing `MikroTikRouter` frontend contract.
-- Fail-closed handling for unavailable, unauthorized, malformed, oversized, or timed-out MikroMCP responses.
-- Configuration validation that allows plaintext HTTP only on loopback; non-loopback endpoints must use HTTPS.
-- Tests for configuration, token isolation, router-ID validation, MCP initialization, and WISP mapping.
+## Herramientas autorizadas
 
-Not implemented or authorized in this phase:
+Allowlist explícita del adapter:
 
-- RouterOS writes.
-- `dryRun` write-tool calls.
-- `plan_changes`, `apply_plan`, `rollback_change`, `bulk_execute`, `run_command`, reboot, backup, upgrade, user management, firewall mutation, queue mutation, or any other write/destructive tool.
-- Installation of MikroMCP on a real server.
-- Enabling RouterOS API/API-SSL on a real router.
-- Creating RouterOS users or changing firewall/service rules.
-- Production deployment.
+- `list_routers`
+- `check_router_health`
+- `get_system_status`
+- `list_interfaces`
+- `list_routes`
 
-## Trust boundary
+No se exponen herramientas `manage_*`, `apply_*`, `rollback_*`, `run_command`, reboot, upgrade ni otras escrituras en esta fase.
 
-The browser never talks to MikroMCP directly.
+## Arquitectura
 
 ```text
 Browser
-  -> NUGA Console API (/api/v1/*, session + mode checks)
-    -> MikroMCP HTTP /mcp (server-only bearer token)
-      -> RouterOS (read-only identity, when separately authorized/configured)
+  -> NUGA Console API
+    -> MikroMCP HTTP /mcp en loopback o red privada
+      -> RouterOS 7 api-ssl
 ```
 
-DEMO remains unchanged: it performs zero external network calls and does not instantiate this adapter.
+El navegador nunca habla directamente con MikroMCP ni recibe credenciales RouterOS o el token bearer de MikroMCP.
 
-## Server-only environment
+DEMO conserva cero llamadas de red. La activación real corresponde al backend de producción.
 
-Never prefix these values with `VITE_` and never commit real values:
+## Configuración server-only
+
+Nunca usar prefijo `VITE_` y nunca guardar valores reales en GitHub:
 
 ```dotenv
 NUGA_MIKROMCP_READ_ONLY_ENABLED=false
@@ -53,62 +41,86 @@ NUGA_MIKROMCP_URL=http://127.0.0.1:3000/mcp
 NUGA_MIKROMCP_TOKEN=
 ```
 
-Rules enforced by NUGA API:
+Reglas de NUGA API:
 
-- Integration is disabled unless `NUGA_MIKROMCP_READ_ONLY_ENABLED=true`.
-- Token must contain at least 32 characters when enabled.
-- URL must be absolute and point to `/mcp`.
-- `http://` is accepted only for `127.0.0.1`, `localhost`, or IPv6 loopback.
-- Remote/shared MikroMCP must be reached through HTTPS.
-- Credentials embedded in the URL are rejected.
+- deshabilitado por defecto;
+- token mínimo de 32 caracteres cuando está habilitado;
+- URL absoluta apuntando a `/mcp`;
+- HTTP permitido exclusivamente sobre loopback;
+- endpoints remotos requieren HTTPS;
+- credenciales embebidas en la URL se rechazan.
 
-## NUGA API surface
+## Producción MikroMCP
 
-All routes require the existing signed NUGA owner session:
+La documentación oficial actual de MikroMCP requiere RouterOS 7.x para REST y recomienda `api-ssl` en producción. El servicio HTTP de MikroMCP debe protegerse con bearer token y RBAC, preferentemente ligado a `127.0.0.1` cuando comparte host con NUGA Console API.
 
-| Route | MikroMCP tool | RouterOS mutation |
-| --- | --- | --- |
-| `GET /api/v1/mikromcp/routers` | `list_routers` | No |
-| `GET /api/v1/mikromcp/routers/:routerId/health` | `check_router_health` | No |
-| `GET /api/v1/mikromcp/routers/:routerId/system` | `get_system_status` | No |
-| `GET /api/v1/mikromcp/routers/:routerId/interfaces` | `list_interfaces` | No |
-| `GET /api/v1/wisp/routers` | composed reads above | No |
+La identidad NUGA debe permitir exclusivamente los routers que Hermes/Operaciones necesite diagnosticar y estas cinco herramientas de lectura.
 
-No MikroMCP write route exists in this phase.
+## API NUGA
 
-`GET /api/v1/status` reports `integrations.mikromcp=true` only when the server-side integration is explicitly enabled. `GET /api/v1/capabilities` may then report real-data read capability, but still reports:
+Rutas existentes del adapter base:
 
-- `canRequestDryRun=false`
-- `canSubmitApproval=false`
-- `canExecuteAuthorizedOperation=false`
+- `GET /api/v1/mikromcp/routers`
+- `GET /api/v1/mikromcp/routers/:routerId/health`
+- `GET /api/v1/mikromcp/routers/:routerId/system`
+- `GET /api/v1/mikromcp/routers/:routerId/interfaces`
+- `GET /api/v1/wisp/routers`
 
-## Required MikroMCP identity policy for a future activation
+Superficie técnica consolidada para Operaciones:
 
-When activation is separately authorized, the NUGA identity should be restricted with MikroMCP RBAC to only the routers NUGA must inspect and only these tool patterns/names:
+- `GET /api/v1/wisp/inventory`
+- `GET /api/v1/wisp/routers/:routerId/health`
+- `GET /api/v1/wisp/routers/:routerId/system`
+- `GET /api/v1/wisp/routers/:routerId/interfaces`
+- `GET /api/v1/wisp/routers/:routerId/routes`
+- `GET /api/v1/wisp/routers/:routerId/diagnostics`
 
-- `list_routers`
-- `check_router_health`
-- `get_system_status`
-- `list_interfaces`
+Todas requieren sesión NUGA válida.
 
-Do not grant `manage_*`, `apply_*`, `rollback_*`, `run_*`, `bulk_execute`, or wildcard write access in Phase 1.
+## Diagnóstico
 
-The MikroMCP service should bind to loopback when it runs on the same host as NUGA Console API. If separated onto another host, place it behind a private/VPN boundary and TLS.
+`getRouterDiagnostics()` correlaciona salud, recursos, interfaces y rutas y genera hallazgos con evidencia observable. No toma decisiones comerciales ni ejecuta cambios.
 
-## Future activation gate
+Posibles hallazgos:
 
-Activation is a separate operational phase and requires explicit authorization before any command is executed.
+- `ROUTER_UNHEALTHY`
+- `CPU_HIGH` / `CPU_CRITICAL`
+- `MEMORY_HIGH` / `MEMORY_CRITICAL`
+- `INTERFACES_DOWN`
+- `ROUTING_EMPTY`
+- `NO_ACTIVE_ROUTES`
+- `NO_ACTIVE_DEFAULT_ROUTE`
+- fallos parciales de lectura MikroMCP
 
-Potential destination: `ramiro@hermes-team-lab`.
+La ausencia de ruta por defecto se maneja como advertencia, no como conclusión definitiva, porque puede ser válida en routers internos o diseños con policy routing.
 
-Before activation, collect evidence for:
+## Frontera CRM
 
-1. Installed MikroMCP version and Node runtime.
-2. `mikromcp doctor` result.
-3. MikroMCP identity scope (`allowedRouters` and read-only tools) without exposing token hashes/raw tokens.
-4. RouterOS dedicated read-only account and source-address restriction.
-5. TLS/API-SSL posture for any non-loopback RouterOS/API path.
-6. NUGA API configuration with secrets redacted.
-7. Validation of the five GET routes above.
+Team Console no factura, cobra, suspende ni reactiva clientes por estado comercial. Eso pertenece a NugaCore/CRM.
 
-Rollback for the activation phase is configuration-only: set `NUGA_MIKROMCP_READ_ONLY_ENABLED=false`, restart only NUGA Console API, and leave RouterOS untouched. Removal of any separately created MikroMCP/RouterOS account must be handled as its own authorized change.
+## Activación real
+
+Destino previsto: `ramiro@hermes-team-lab`.
+
+Antes de modificar RouterOS se inspeccionará:
+
+1. sistema operativo, hostname y reloj del servidor;
+2. Node/npm instalados;
+3. versión/instalación MikroMCP actual;
+4. puertos locales ocupados;
+5. estado del servicio `nuga-console-api-production`;
+6. commit desplegado de NUGA Team Console;
+7. presencia de variables MikroMCP por **nombre**, nunca sus valores;
+8. existencia/permisos de archivos de entorno, sin imprimir secretos.
+
+Después, y únicamente tras analizar esa evidencia, se preparará la instalación/configuración real de MikroMCP y el acceso `api-ssl` al primer router de producción.
+
+## Rollback
+
+Para retirar el diagnóstico sin tocar RouterOS:
+
+1. `NUGA_MIKROMCP_READ_ONLY_ENABLED=false`;
+2. reiniciar NUGA Console API;
+3. validar que MikroMCP deje de estar disponible desde NUGA.
+
+Cualquier remoción posterior de usuarios RouterOS, certificados o servicio MikroMCP será un cambio separado con su propio alcance y validación.
