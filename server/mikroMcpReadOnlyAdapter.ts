@@ -6,12 +6,54 @@ const READ_TOOLS = new Set([
   'list_routers',
   'check_router_health',
   'get_system_status',
-  'list_interfaces'
+  'list_interfaces',
+  'list_routes'
 ]);
 
 type JsonRecord = Record<string, unknown>;
 
 export type MikroMcpReadOnlyErrorCode = 'DENIED' | 'UNAVAILABLE' | 'INVALID_RESPONSE';
+export type MikroMcpDiagnosticSeverity = 'info' | 'warning' | 'critical';
+
+export interface MikroMcpDiagnosticFinding {
+  code: string;
+  severity: MikroMcpDiagnosticSeverity;
+  domain: 'health' | 'system' | 'interfaces' | 'routing' | 'integration';
+  title: string;
+  evidence: string;
+}
+
+export interface MikroMcpRouterDiagnostics {
+  routerId: string;
+  source: 'mikromcp_production';
+  observedAt: string;
+  status: 'optimal' | 'warning' | 'critical';
+  partial: boolean;
+  health: {
+    healthy: boolean | null;
+    cpuPercent: number | null;
+    ramUsagePercent: number | null;
+    uptime: string;
+    routerOsVersion: string;
+  };
+  interfaces: {
+    total: number;
+    up: number;
+    down: number;
+    disabled: number;
+  };
+  routing: {
+    total: number;
+    active: number;
+    static: number;
+    bgp: number;
+    ospf: number;
+    defaultRoutes: number;
+    activeDefaultRoutes: number;
+    defaultGateways: string[];
+  };
+  findings: MikroMcpDiagnosticFinding[];
+}
 
 export class MikroMcpReadOnlyError extends Error {
   constructor(
@@ -59,6 +101,17 @@ function numberValue(value: unknown, fallback = 0): number {
   if (typeof value === 'string') {
     const parsed = Number(value.replace(/[^0-9.+-]/g, ''));
     if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function booleanValue(value: unknown, fallback = false): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', 'yes', '1', 'up', 'running', 'active'].includes(normalized)) return true;
+    if (['false', 'no', '0', 'down', 'inactive', 'disabled'].includes(normalized)) return false;
   }
   return fallback;
 }
@@ -113,6 +166,78 @@ function interfaceType(rawType: unknown, name: string): MikroTikInterface['type'
   return 'ethernet';
 }
 
+function interfaceDisabled(raw: JsonRecord): boolean {
+  return booleanValue(first(nested(raw, ['disabled']), nested(raw, ['isDisabled'])), false);
+}
+
+function interfaceRunning(raw: JsonRecord): boolean {
+  const running = first(nested(raw, ['running']), nested(raw, ['status']));
+  return !interfaceDisabled(raw) && booleanValue(running, running !== 'down');
+}
+
+function routeDestination(raw: JsonRecord): string {
+  return text(first(
+    nested(raw, ['dstAddress']),
+    nested(raw, ['dst-address']),
+    nested(raw, ['destination']),
+    nested(raw, ['dst'])
+  ));
+}
+
+function routeGateway(raw: JsonRecord): string {
+  return text(first(
+    nested(raw, ['gateway']),
+    nested(raw, ['immediateGw']),
+    nested(raw, ['immediate-gw']),
+    nested(raw, ['nexthop'])
+  ));
+}
+
+function routeProtocol(raw: JsonRecord): string {
+  return text(first(
+    nested(raw, ['protocol']),
+    nested(raw, ['belongsTo']),
+    nested(raw, ['belongs-to']),
+    nested(raw, ['flags'])
+  )).toLowerCase();
+}
+
+function routeActive(raw: JsonRecord): boolean {
+  const explicit = first(nested(raw, ['active']), nested(raw, ['isActive']));
+  if (explicit !== undefined) return booleanValue(explicit, false);
+  const flags = text(nested(raw, ['flags'])).toUpperCase();
+  return flags.includes('A');
+}
+
+function routeStatic(raw: JsonRecord): boolean {
+  const explicit = first(nested(raw, ['static']), nested(raw, ['isStatic']));
+  if (explicit !== undefined) return booleanValue(explicit, false);
+  const protocol = routeProtocol(raw);
+  return protocol.includes('static') || text(nested(raw, ['flags'])).toUpperCase().includes('S');
+}
+
+function isDefaultRoute(raw: JsonRecord): boolean {
+  const destination = routeDestination(raw);
+  return destination === '0.0.0.0/0' || destination === '::/0';
+}
+
+function routeSummary(rawRoutes: JsonRecord[]) {
+  const active = rawRoutes.filter(routeActive);
+  const defaults = rawRoutes.filter(isDefaultRoute);
+  const activeDefaults = defaults.filter(routeActive);
+  const protocolOf = (route: JsonRecord) => routeProtocol(route);
+  return {
+    total: rawRoutes.length,
+    active: active.length,
+    static: rawRoutes.filter(routeStatic).length,
+    bgp: rawRoutes.filter(route => protocolOf(route).includes('bgp')).length,
+    ospf: rawRoutes.filter(route => protocolOf(route).includes('ospf')).length,
+    defaultRoutes: defaults.length,
+    activeDefaultRoutes: activeDefaults.length,
+    defaultGateways: [...new Set(activeDefaults.map(routeGateway).filter(Boolean))]
+  };
+}
+
 export class MikroMcpReadOnlyAdapter {
   private readonly endpoint: string;
   private readonly token: string;
@@ -163,6 +288,213 @@ export class MikroMcpReadOnlyAdapter {
     return records(result, ['interfaces', 'items', 'data', 'result']);
   }
 
+  async listRoutes(routerId: string): Promise<JsonRecord[]> {
+    this.assertRouterId(routerId);
+    const result = await this.callReadTool('list_routes', {
+      routerId,
+      activeOnly: false,
+      staticOnly: false,
+      limit: 500,
+      offset: 0
+    });
+    return records(result, ['routes', 'items', 'data', 'result']);
+  }
+
+  async getRouterDiagnostics(routerId: string): Promise<MikroMcpRouterDiagnostics> {
+    this.assertRouterId(routerId);
+    const [healthResult, systemResult, interfacesResult, routesResult] = await Promise.allSettled([
+      this.checkRouterHealth(routerId),
+      this.getSystemStatus(routerId),
+      this.listInterfaces(routerId),
+      this.listRoutes(routerId)
+    ]);
+
+    const health = healthResult.status === 'fulfilled' ? healthResult.value : {};
+    const system = systemResult.status === 'fulfilled' ? systemResult.value : {};
+    const rawInterfaces = interfacesResult.status === 'fulfilled' ? interfacesResult.value : [];
+    const rawRoutes = routesResult.status === 'fulfilled' ? routesResult.value : [];
+    const partial = [healthResult, systemResult, interfacesResult, routesResult]
+      .some(result => result.status === 'rejected');
+
+    const healthFlag = healthResult.status === 'fulfilled'
+      ? first(nested(health, ['healthy']), nested(health, ['status', 'healthy']))
+      : null;
+    const healthy = healthFlag === null ? null : healthFlag !== false;
+    const cpuPercent = systemResult.status === 'fulfilled' || healthResult.status === 'fulfilled'
+      ? percent(numberValue(first(
+          nested(system, ['cpuLoad']),
+          nested(system, ['cpu-load']),
+          nested(system, ['resource', 'cpuLoad']),
+          nested(system, ['resource', 'cpu-load']),
+          nested(health, ['cpuLoad']),
+          nested(health, ['cpu-load'])
+        )))
+      : null;
+    const ramUsagePercent = systemResult.status === 'fulfilled' || healthResult.status === 'fulfilled'
+      ? memoryPercent(system, health)
+      : null;
+
+    const disabledInterfaces = rawInterfaces.filter(interfaceDisabled);
+    const upInterfaces = rawInterfaces.filter(interfaceRunning);
+    const downInterfaces = rawInterfaces.filter(raw => !interfaceDisabled(raw) && !interfaceRunning(raw));
+    const routing = routeSummary(rawRoutes);
+    const findings: MikroMcpDiagnosticFinding[] = [];
+
+    if (healthResult.status === 'rejected') {
+      findings.push({
+        code: 'HEALTH_READ_FAILED',
+        severity: 'warning',
+        domain: 'integration',
+        title: 'No fue posible leer la salud del router',
+        evidence: 'MikroMCP no completó check_router_health para este router.'
+      });
+    } else if (healthy === false) {
+      findings.push({
+        code: 'ROUTER_UNHEALTHY',
+        severity: 'critical',
+        domain: 'health',
+        title: 'MikroMCP reporta el router no saludable',
+        evidence: 'check_router_health devolvió healthy=false.'
+      });
+    }
+
+    if (systemResult.status === 'rejected') {
+      findings.push({
+        code: 'SYSTEM_READ_FAILED',
+        severity: 'warning',
+        domain: 'integration',
+        title: 'Lectura de sistema incompleta',
+        evidence: 'MikroMCP no completó get_system_status.'
+      });
+    }
+
+    if (cpuPercent !== null && cpuPercent >= 95) {
+      findings.push({
+        code: 'CPU_CRITICAL',
+        severity: 'critical',
+        domain: 'system',
+        title: 'CPU en nivel crítico',
+        evidence: `CPU observada en ${cpuPercent}%.`
+      });
+    } else if (cpuPercent !== null && cpuPercent >= 85) {
+      findings.push({
+        code: 'CPU_HIGH',
+        severity: 'warning',
+        domain: 'system',
+        title: 'CPU elevada',
+        evidence: `CPU observada en ${cpuPercent}%.`
+      });
+    }
+
+    if (ramUsagePercent !== null && ramUsagePercent >= 97) {
+      findings.push({
+        code: 'MEMORY_CRITICAL',
+        severity: 'critical',
+        domain: 'system',
+        title: 'Memoria en nivel crítico',
+        evidence: `Uso de memoria observado en ${ramUsagePercent}%.`
+      });
+    } else if (ramUsagePercent !== null && ramUsagePercent >= 90) {
+      findings.push({
+        code: 'MEMORY_HIGH',
+        severity: 'warning',
+        domain: 'system',
+        title: 'Uso de memoria elevado',
+        evidence: `Uso de memoria observado en ${ramUsagePercent}%.`
+      });
+    }
+
+    if (interfacesResult.status === 'rejected') {
+      findings.push({
+        code: 'INTERFACES_READ_FAILED',
+        severity: 'warning',
+        domain: 'integration',
+        title: 'No fue posible leer interfaces',
+        evidence: 'MikroMCP no completó list_interfaces.'
+      });
+    } else if (downInterfaces.length > 0) {
+      findings.push({
+        code: 'INTERFACES_DOWN',
+        severity: 'info',
+        domain: 'interfaces',
+        title: 'Hay interfaces habilitadas que no están ejecutando',
+        evidence: downInterfaces.slice(0, 10).map(raw => text(raw.name, 'unknown')).join(', ')
+      });
+    }
+
+    if (routesResult.status === 'rejected') {
+      findings.push({
+        code: 'ROUTES_READ_FAILED',
+        severity: 'warning',
+        domain: 'integration',
+        title: 'No fue posible leer routing',
+        evidence: 'MikroMCP no completó list_routes.'
+      });
+    } else if (routing.total === 0) {
+      findings.push({
+        code: 'ROUTING_EMPTY',
+        severity: 'critical',
+        domain: 'routing',
+        title: 'Tabla de rutas vacía',
+        evidence: 'list_routes no devolvió rutas.'
+      });
+    } else if (routing.active === 0) {
+      findings.push({
+        code: 'NO_ACTIVE_ROUTES',
+        severity: 'critical',
+        domain: 'routing',
+        title: 'No existen rutas activas',
+        evidence: `${routing.total} rutas observadas y 0 activas.`
+      });
+    } else if (routing.activeDefaultRoutes === 0) {
+      findings.push({
+        code: 'NO_ACTIVE_DEFAULT_ROUTE',
+        severity: 'warning',
+        domain: 'routing',
+        title: 'No se observó una ruta por defecto activa',
+        evidence: 'Puede ser esperado en routers internos; requiere correlación con su rol y tablas de policy routing.'
+      });
+    }
+
+    const status: MikroMcpRouterDiagnostics['status'] = findings.some(finding => finding.severity === 'critical')
+      ? 'critical'
+      : findings.some(finding => finding.severity === 'warning')
+        ? 'warning'
+        : 'optimal';
+
+    return {
+      routerId,
+      source: 'mikromcp_production',
+      observedAt: new Date().toISOString(),
+      status,
+      partial,
+      health: {
+        healthy,
+        cpuPercent,
+        ramUsagePercent,
+        uptime: text(first(
+          nested(health, ['uptime']),
+          nested(system, ['resource', 'uptime']),
+          nested(system, ['uptime'])
+        )),
+        routerOsVersion: text(first(
+          nested(health, ['firmwareVersion']),
+          nested(health, ['version']),
+          nested(system, ['resource', 'version']),
+          nested(system, ['version'])
+        ))
+      },
+      interfaces: {
+        total: rawInterfaces.length,
+        up: upInterfaces.length,
+        down: downInterfaces.length,
+        disabled: disabledInterfaces.length
+      },
+      routing,
+      findings
+    };
+  }
+
   async listWispRouters(): Promise<MikroTikRouter[]> {
     const registry = await this.listRouters();
     const output: MikroTikRouter[] = [];
@@ -171,14 +503,17 @@ export class MikroMcpReadOnlyAdapter {
       const id = text(registered.id);
       if (!id) continue;
 
-      const [healthResult, systemResult, interfacesResult] = await Promise.allSettled([
+      const [healthResult, systemResult, interfacesResult, routesResult] = await Promise.allSettled([
         this.checkRouterHealth(id),
         this.getSystemStatus(id),
-        this.listInterfaces(id)
+        this.listInterfaces(id),
+        this.listRoutes(id)
       ]);
       const health = healthResult.status === 'fulfilled' ? healthResult.value : {};
       const system = systemResult.status === 'fulfilled' ? systemResult.value : {};
       const rawInterfaces = interfacesResult.status === 'fulfilled' ? interfacesResult.value : [];
+      const rawRoutes = routesResult.status === 'fulfilled' ? routesResult.value : [];
+      const routes = routeSummary(rawRoutes);
 
       const healthy = first(nested(health, ['healthy']), nested(health, ['status', 'healthy'])) !== false;
       const cpuPercent = percent(numberValue(first(
@@ -190,17 +525,17 @@ export class MikroMcpReadOnlyAdapter {
         nested(health, ['cpu-load'])
       )));
       const ramUsagePercent = memoryPercent(system, health);
-      const partialRead = systemResult.status === 'rejected' || interfacesResult.status === 'rejected';
+      const partialRead = systemResult.status === 'rejected' ||
+        interfacesResult.status === 'rejected' ||
+        routesResult.status === 'rejected';
 
       const interfaces: MikroTikInterface[] = rawInterfaces.map(raw => {
         const name = text(first(nested(raw, ['name']), nested(raw, ['interface'])), 'unknown');
-        const running = first(nested(raw, ['running']), nested(raw, ['status']));
         return {
           name,
           type: interfaceType(first(nested(raw, ['type']), nested(raw, ['default-name'])), name),
-          status: running === false || running === 'down' || nested(raw, ['disabled']) === true ? 'down' : 'up',
+          status: interfaceRunning(raw) ? 'up' : 'down',
           ipAddress: text(first(nested(raw, ['ipAddress']), nested(raw, ['ip-address']), nested(raw, ['address']))),
-          // MikroMCP exposes counters here, not an instantaneous Mbps rate.
           trafficRxMbps: 0,
           trafficTxMbps: 0
         };
@@ -243,11 +578,17 @@ export class MikroMcpReadOnlyAdapter {
         towerId: '',
         status: !healthy
           ? 'critical'
-          : partialRead || cpuPercent >= 85 || ramUsagePercent >= 90
+          : partialRead || cpuPercent >= 85 || ramUsagePercent >= 90 || (routesResult.status === 'fulfilled' && routes.active === 0)
             ? 'warning'
             : 'optimal',
         interfaces,
-        routeSummary: { total: 0, bgp: 0, ospf: 0, static: 0, defaultGateway: '' },
+        routeSummary: {
+          total: routes.total,
+          bgp: routes.bgp,
+          ospf: routes.ospf,
+          static: routes.static,
+          defaultGateway: routes.defaultGateways[0] ?? ''
+        },
         dhcpLeasesCount: 0,
         dnsServers: [],
         firewallRulesCount: 0,

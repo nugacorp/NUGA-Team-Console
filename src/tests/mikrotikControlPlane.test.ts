@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
 import { createSessionToken } from '../../server/auth';
 import type { ServerConfig } from '../../server/config';
-import { createMikrotikControlPlaneRouter } from '../../server/mikrotikControlPlaneRouter';
+import {
+  createMikrotikControlPlaneRouter,
+  type MikroMcpDiagnosticsReader
+} from '../../server/mikrotikControlPlaneRouter';
 import {
   buildMikroTikRouterEnrollmentPlan,
   buildMikroTikTechnicalChangePlan,
@@ -41,9 +44,9 @@ afterEach(async () => {
   })));
 });
 
-async function startRouter() {
+async function startRouter(mikroMcpAdapter?: MikroMcpDiagnosticsReader) {
   const app = express();
-  app.use('/api/v1/wisp', createMikrotikControlPlaneRouter(config));
+  app.use('/api/v1/wisp', createMikrotikControlPlaneRouter(config, { mikroMcpAdapter }));
   const server = app.listen(0, '127.0.0.1');
   servers.push(server);
   await new Promise<void>(resolve => server.once('listening', () => resolve()));
@@ -52,15 +55,30 @@ async function startRouter() {
   return `http://127.0.0.1:${address.port}`;
 }
 
+function sessionHeaders() {
+  const { token, session } = createSessionToken(config.ownerUsername, config.sessionSecret);
+  return {
+    token,
+    session,
+    cookie: `nuga_session=${token}`
+  };
+}
+
 describe('MikroTik technical control plane', () => {
-  it('keeps CRM and subscriber lifecycle explicitly outside its scope', () => {
+  it('uses real production diagnostics and contains no simulation stage', () => {
     expect(MIKROTIK_CONTROL_PLANE_POLICY.architecture).toMatchObject({
       managementPath: 'single-edge-private-overlay',
       routerTransport: 'mikromcp',
       directPublicRouterAccess: false,
       credentialsInBrowser: false,
-      aiRole: 'technical_advisory'
+      aiRole: 'technical_advisory',
+      productionDiagnostics: true,
+      simulationEnabled: false
     });
+    expect(MIKROTIK_CONTROL_PLANE_POLICY.workflow).toEqual([
+      'observe', 'diagnose', 'plan', 'approve', 'execute', 'verify', 'rollback'
+    ]);
+    expect(MIKROTIK_CONTROL_PLANE_POLICY.workflow).not.toContain('simulate');
     expect(MIKROTIK_CONTROL_PLANE_POLICY.productBoundary).toEqual({
       crm: false,
       billing: false,
@@ -70,21 +88,22 @@ describe('MikroTik technical control plane', () => {
       technicalOperations: true
     });
     expect(MIKROTIK_CONTROL_PLANE_POLICY.execution).toMatchObject({
-      enabled: false,
-      dryRunRequired: true,
+      writesEnabled: false,
       humanApprovalRequired: true,
+      currentStateEvidenceRequired: true,
       rollbackRequired: true
     });
     expect(MIKROTIK_CONTROL_PLANE_POLICY.technicalCapabilities).toEqual(expect.arrayContaining([
       'health',
       'routing_diagnostics',
+      'anomaly_detection',
       'firewall_audit',
       'queue_diagnostics',
       'maintenance_planning'
     ]));
   });
 
-  it('prepares private router enrollment without commercial service metadata', () => {
+  it('prepares RouterOS 7 private enrollment without commercial service metadata', () => {
     const plan = buildMikroTikRouterEnrollmentPlan({
       routerId: 'edge-01',
       displayName: 'Router de Borde',
@@ -106,7 +125,7 @@ describe('MikroTik technical control plane', () => {
     expect(JSON.stringify(plan)).not.toMatch(/billing|payment|suspend|reactivate/i);
   });
 
-  it('rejects public router management addresses', () => {
+  it('rejects public management addresses and RouterOS 6 for MikroMCP production REST diagnostics', () => {
     expect(() => buildMikroTikRouterEnrollmentPlan({
       routerId: 'edge-01',
       displayName: 'Router de Borde',
@@ -114,9 +133,17 @@ describe('MikroTik technical control plane', () => {
       routerOsMajor: '7',
       isEdgeRouter: true
     })).toThrow(MikroTikControlPlaneValidationError);
+
+    expect(() => buildMikroTikRouterEnrollmentPlan({
+      routerId: 'edge-01',
+      displayName: 'Router de Borde',
+      privateHost: '192.168.88.1',
+      routerOsMajor: '6',
+      isEdgeRouter: true
+    })).toThrow(/RouterOS 7/);
   });
 
-  it('builds deterministic non-executable technical change plans with rollback', () => {
+  it('builds deterministic technical change plans from current-state evidence without dry-run semantics', () => {
     const input = {
       routerId: 'core-01',
       category: 'routing' as const,
@@ -128,11 +155,12 @@ describe('MikroTik technical control plane', () => {
       routerId: 'core-01',
       category: 'routing',
       risk: 'high',
-      requiresDryRun: true,
+      requiresCurrentStateEvidence: true,
       requiresHumanApproval: true,
       executionAllowed: false,
       executionBinding: null
     });
+    expect(JSON.stringify(plan)).not.toMatch(/dry[- ]?run|simulat/i);
     expect(plan.evidence.length).toBeGreaterThan(0);
     expect(plan.validation.length).toBeGreaterThan(0);
     expect(plan.rollback.length).toBeGreaterThan(0);
@@ -153,24 +181,79 @@ describe('MikroTik technical control plane', () => {
     })).toThrow(MikroTikControlPlaneValidationError);
   });
 
-  it('requires owner session and CSRF for technical planning API', async () => {
+  it('requires owner session and returns 503 until the real MikroMCP production adapter is connected', async () => {
     const baseUrl = await startRouter();
-
-    const unauthorized = await fetch(`${baseUrl}/api/v1/wisp/control-plane`, {
+    const unauthorized = await fetch(`${baseUrl}/api/v1/wisp/inventory`, {
       headers: { 'x-nuga-mode': 'staging' }
     });
     expect(unauthorized.status).toBe(401);
 
-    const { token, session } = createSessionToken(config.ownerUsername, config.sessionSecret);
-    const cookie = `nuga_session=${token}`;
+    const { cookie } = sessionHeaders();
+    const unavailable = await fetch(`${baseUrl}/api/v1/wisp/inventory`, {
+      headers: { cookie, 'x-nuga-mode': 'staging' }
+    });
+    expect(unavailable.status).toBe(503);
+  });
+
+  it('serves real diagnostic reader results through the authenticated WISP API', async () => {
+    const reader: MikroMcpDiagnosticsReader = {
+      async listRouters() { return [{ id: 'edge-01', rosVersion: '7.20.6', tags: ['prod'] }]; },
+      async checkRouterHealth() { return { healthy: true, cpuLoad: 17 }; },
+      async getSystemStatus() { return { identity: { name: 'EDGE-01' } }; },
+      async listInterfaces() { return [{ name: 'sfp-sfpplus1', running: true }]; },
+      async listRoutes() { return [{ 'dst-address': '0.0.0.0/0', gateway: '10.0.0.1', active: true }]; },
+      async getRouterDiagnostics(routerId) {
+        return {
+          routerId,
+          source: 'mikromcp_production',
+          status: 'optimal',
+          partial: false,
+          findings: []
+        };
+      }
+    };
+    const baseUrl = await startRouter(reader);
+    const { cookie } = sessionHeaders();
+
+    const inventory = await fetch(`${baseUrl}/api/v1/wisp/inventory`, {
+      headers: { cookie, 'x-nuga-mode': 'staging' }
+    });
+    expect(inventory.status).toBe(200);
+    await expect(inventory.json()).resolves.toEqual([
+      expect.objectContaining({ id: 'edge-01', rosVersion: '7.20.6' })
+    ]);
+
+    const routes = await fetch(`${baseUrl}/api/v1/wisp/routers/edge-01/routes`, {
+      headers: { cookie, 'x-nuga-mode': 'staging' }
+    });
+    expect(routes.status).toBe(200);
+    await expect(routes.json()).resolves.toEqual([
+      expect.objectContaining({ gateway: '10.0.0.1', active: true })
+    ]);
+
+    const diagnostics = await fetch(`${baseUrl}/api/v1/wisp/routers/edge-01/diagnostics`, {
+      headers: { cookie, 'x-nuga-mode': 'staging' }
+    });
+    expect(diagnostics.status).toBe(200);
+    await expect(diagnostics.json()).resolves.toMatchObject({
+      routerId: 'edge-01',
+      source: 'mikromcp_production',
+      status: 'optimal'
+    });
+  });
+
+  it('requires CSRF for technical planning API', async () => {
+    const baseUrl = await startRouter();
+    const { cookie, session } = sessionHeaders();
 
     const policy = await fetch(`${baseUrl}/api/v1/wisp/control-plane`, {
       headers: { cookie, 'x-nuga-mode': 'staging' }
     });
     expect(policy.status).toBe(200);
     await expect(policy.json()).resolves.toMatchObject({
+      architecture: { productionDiagnostics: true, simulationEnabled: false },
       productBoundary: { crm: false, billing: false, technicalOperations: true },
-      execution: { enabled: false }
+      execution: { writesEnabled: false }
     });
 
     const denied = await fetch(`${baseUrl}/api/v1/wisp/technical-changes/plan`, {
@@ -188,30 +271,6 @@ describe('MikroTik technical control plane', () => {
       })
     });
     expect(denied.status).toBe(403);
-
-    const enrollment = await fetch(`${baseUrl}/api/v1/wisp/routers/enrollment/plan`, {
-      method: 'POST',
-      headers: {
-        cookie,
-        origin: config.publicOrigin,
-        'content-type': 'application/json',
-        'x-nuga-mode': 'staging',
-        'x-csrf-token': session.csrfToken
-      },
-      body: JSON.stringify({
-        routerId: 'edge-01',
-        displayName: 'Router de Borde',
-        privateHost: '192.168.88.1',
-        routerOsMajor: '7',
-        isEdgeRouter: true
-      })
-    });
-    expect(enrollment.status).toBe(200);
-    await expect(enrollment.json()).resolves.toMatchObject({
-      executionAllowed: false,
-      credentialsRequiredInPlan: false,
-      isEdgeRouter: true
-    });
 
     const accepted = await fetch(`${baseUrl}/api/v1/wisp/technical-changes/plan`, {
       method: 'POST',
@@ -232,6 +291,7 @@ describe('MikroTik technical control plane', () => {
     await expect(accepted.json()).resolves.toMatchObject({
       executionAllowed: false,
       requiresHumanApproval: true,
+      requiresCurrentStateEvidence: true,
       category: 'firewall'
     });
   });
