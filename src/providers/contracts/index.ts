@@ -26,11 +26,6 @@ import {
   BackendCapabilities,
   AuditRecordPayload
 } from '../../types';
-import type {
-  MikroTikControlPlanePolicy,
-  MikroTikServiceActionPlan,
-  MikroTikServiceActionPlanInput
-} from '../../networkControl';
 
 export interface DashboardProvider {
   getSummaryMetrics(): Promise<
@@ -106,8 +101,6 @@ export interface WispProvider {
   getRouters(): Promise<ProviderResult<MikroTikRouter[]>>;
   getLinks(): Promise<ProviderResult<WispLink[]>>;
   getIncidents(): Promise<ProviderResult<WispIncident[]>>;
-  getControlPlane(): Promise<ProviderResult<MikroTikControlPlanePolicy>>;
-  planServiceAction(input: MikroTikServiceActionPlanInput): Promise<ProviderResult<MikroTikServiceActionPlan>>;
   createIncident(incident: Omit<WispIncident, 'id' | 'detectedAt'>): Promise<ProviderResult<WispIncident>>;
   resolveIncident(incidentId: string, resolutionEvidence?: string): Promise<ProviderResult<WispIncident>>;
 }
