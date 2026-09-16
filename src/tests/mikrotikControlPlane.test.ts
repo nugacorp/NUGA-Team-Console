@@ -5,6 +5,7 @@ import { createSessionToken } from '../../server/auth';
 import type { ServerConfig } from '../../server/config';
 import { createMikrotikControlPlaneRouter } from '../../server/mikrotikControlPlaneRouter';
 import {
+  buildMikroTikRouterEnrollmentPlan,
   buildMikroTikServiceActionPlan,
   MIKROTIK_CONTROL_PLANE_POLICY,
   MikroTikControlPlaneValidationError
@@ -69,6 +70,44 @@ describe('MikroTik control plane', () => {
     expect(MIKROTIK_CONTROL_PLANE_POLICY.supportedConnectionTypes.map(item => item.type)).toEqual([
       'pppoe', 'static_ip', 'queue', 'hotspot', 'address_list'
     ]);
+    expect(MIKROTIK_CONTROL_PLANE_POLICY.scheduledAutomationTemplates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'router-health-report', mode: 'read_only', executionEnabled: true }),
+      expect.objectContaining({ id: 'router-backup', mode: 'future_write', executionEnabled: false })
+    ]));
+  });
+
+  it('prepares private router enrollment without credentials or RouterOS mutation', () => {
+    const plan = buildMikroTikRouterEnrollmentPlan({
+      routerId: 'edge-01',
+      displayName: 'Router de Borde',
+      privateHost: '10.147.20.1',
+      routerOsMajor: '7',
+      defaultConnectionType: 'address_list',
+      managementInterface: 'mgmt-vlan',
+      isEdgeRouter: true
+    });
+
+    expect(plan).toMatchObject({
+      routerId: 'edge-01',
+      privateHost: '10.147.20.1',
+      routerOsMajor: '7',
+      isEdgeRouter: true,
+      risk: 'high',
+      credentialsRequiredInPlan: false,
+      executionAllowed: false
+    });
+    expect(plan.proposedEffects.join(' ')).not.toMatch(/password|secret|ssh/i);
+  });
+
+  it('rejects public router management addresses', () => {
+    expect(() => buildMikroTikRouterEnrollmentPlan({
+      routerId: 'edge-01',
+      displayName: 'Router de Borde',
+      privateHost: '8.8.8.8',
+      routerOsMajor: '7',
+      defaultConnectionType: 'address_list',
+      isEdgeRouter: true
+    })).toThrow(MikroTikControlPlaneValidationError);
   });
 
   it('builds deterministic, non-executable service plans with rollback', () => {
@@ -143,6 +182,31 @@ describe('MikroTik control plane', () => {
       })
     });
     expect(denied.status).toBe(403);
+
+    const enrollment = await fetch(`${baseUrl}/api/v1/wisp/routers/enrollment/plan`, {
+      method: 'POST',
+      headers: {
+        cookie,
+        origin: config.publicOrigin,
+        'content-type': 'application/json',
+        'x-nuga-mode': 'staging',
+        'x-csrf-token': session.csrfToken
+      },
+      body: JSON.stringify({
+        routerId: 'edge-01',
+        displayName: 'Router de Borde',
+        privateHost: '192.168.88.1',
+        routerOsMajor: '7',
+        defaultConnectionType: 'address_list',
+        isEdgeRouter: true
+      })
+    });
+    expect(enrollment.status).toBe(200);
+    await expect(enrollment.json()).resolves.toMatchObject({
+      executionAllowed: false,
+      credentialsRequiredInPlan: false,
+      isEdgeRouter: true
+    });
 
     const accepted = await fetch(`${baseUrl}/api/v1/wisp/service-actions/plan`, {
       method: 'POST',
