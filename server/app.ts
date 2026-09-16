@@ -436,9 +436,13 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   app.get(`${API_PREFIX}/mikromcp/routers/:routerId/interfaces`, requireSession, (request, response) =>
     mikroMcpRead(() => mikroMcpAdapter!.listInterfaces(request.params.routerId))(request, response)
   );
-  app.get(`${API_PREFIX}/wisp/routers`, requireSession,
-    mikroMcpRead(() => mikroMcpAdapter!.listWispRouters())
-  );
+  app.get(`${API_PREFIX}/wisp/routers`, requireSession, async (request, response) => {
+    if (!mikroMcpAdapter) {
+      response.status(200).json([]);
+      return;
+    }
+    await mikroMcpRead(() => mikroMcpAdapter.listWispRouters())(request, response);
+  });
 
   const consoleUnavailable = (_request: Request, response: Response) => {
     response.status(503).json(
