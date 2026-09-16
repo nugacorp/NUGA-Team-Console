@@ -25,6 +25,7 @@ import {
   validateModeHeader
 } from './contracts';
 import { HermesReadOnlyAdapter, HermesReadOnlyError } from './hermesReadOnlyAdapter';
+import { MikroMcpReadOnlyAdapter, MikroMcpReadOnlyError } from './mikroMcpReadOnlyAdapter';
 import { SupabaseConsoleAdapter, SupabaseConsoleError } from './supabaseConsoleAdapter';
 import {
   MiniMaxWritingAdapter,
@@ -42,6 +43,7 @@ function getSession(response: Response): AuthSession | null {
 
 export interface AppDependencies {
   hermesAdapter?: HermesReadOnlyAdapter;
+  mikroMcpAdapter?: MikroMcpReadOnlyAdapter;
   supabaseAdapter?: SupabaseConsoleAdapter;
   writingAdapter?: MiniMaxWritingAdapter;
   frontendDirectory?: string | null;
@@ -60,6 +62,16 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
           boards: config.hermesBoards,
           timeoutMs: 8_000,
           maxTasks: 500
+        })
+      : null
+  );
+  const mikroMcpAdapter = dependencies.mikroMcpAdapter ?? (
+    config.mikroMcpReadOnlyEnabled === true
+      ? new MikroMcpReadOnlyAdapter({
+          endpoint: config.mikroMcpUrl ?? 'http://127.0.0.1:3000/mcp',
+          token: config.mikroMcpToken ?? '',
+          timeoutMs: 8_000,
+          maxResponseBytes: 1_048_576
         })
       : null
   );
@@ -131,7 +143,11 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   });
 
   app.get(`${API_PREFIX}/capabilities`, (_request, response) => {
-    response.status(200).json(createServerCapabilities(config.mode, config.hermesReadOnlyEnabled));
+    response.status(200).json(createServerCapabilities(
+      config.mode,
+      config.hermesReadOnlyEnabled,
+      config.mikroMcpReadOnlyEnabled === true
+    ));
   });
 
   app.post(`${API_PREFIX}/auth/login`, (request, response) => {
@@ -269,6 +285,37 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
     }
   };
 
+  const mikroMcpUnavailable = (_request: Request, response: Response) => {
+    response.status(503).json(
+      apiError(
+        'MIKROMCP_NOT_CONNECTED',
+        'MikroMCP aún no está habilitado en NUGA Console API.'
+      )
+    );
+  };
+
+  const mikroMcpRead = (
+    operation: () => Promise<unknown>
+  ) => async (_request: Request, response: Response) => {
+    if (!mikroMcpAdapter) {
+      mikroMcpUnavailable(_request, response);
+      return;
+    }
+    try {
+      response.status(200).json(await operation());
+    } catch (error) {
+      const denied = error instanceof MikroMcpReadOnlyError && error.code === 'DENIED';
+      response.status(denied ? 403 : 503).json(
+        apiError(
+          denied ? 'MIKROMCP_SCOPE_DENIED' : 'MIKROMCP_READ_UNAVAILABLE',
+          denied
+            ? 'La identidad MikroMCP no autoriza esa lectura.'
+            : 'MikroMCP no está disponible para lectura.'
+        )
+      );
+    }
+  };
+
   app.get(`${API_PREFIX}/agents`, requireSession, async (_request, response) => {
     if (!supabaseAdapter) {
       response.status(200).json(TEAM_PROFILES);
@@ -376,6 +423,23 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   app.get(`${API_PREFIX}/tasks`, requireSession, hermesUnavailable);
   app.get(`${API_PREFIX}/tasks/:id`, requireSession, hermesUnavailable);
   app.get(`${API_PREFIX}/tasks/:id/runs`, requireSession, hermesUnavailable);
+
+  app.get(`${API_PREFIX}/mikromcp/routers`, requireSession,
+    mikroMcpRead(() => mikroMcpAdapter!.listRouters())
+  );
+  app.get(`${API_PREFIX}/mikromcp/routers/:routerId/health`, requireSession, (request, response) =>
+    mikroMcpRead(() => mikroMcpAdapter!.checkRouterHealth(request.params.routerId))(request, response)
+  );
+  app.get(`${API_PREFIX}/mikromcp/routers/:routerId/system`, requireSession, (request, response) =>
+    mikroMcpRead(() => mikroMcpAdapter!.getSystemStatus(request.params.routerId))(request, response)
+  );
+  app.get(`${API_PREFIX}/mikromcp/routers/:routerId/interfaces`, requireSession, (request, response) =>
+    mikroMcpRead(() => mikroMcpAdapter!.listInterfaces(request.params.routerId))(request, response)
+  );
+  app.get(`${API_PREFIX}/wisp/routers`, requireSession,
+    mikroMcpRead(() => mikroMcpAdapter!.listWispRouters())
+  );
+
   const consoleUnavailable = (_request: Request, response: Response) => {
     response.status(503).json(
       apiError('SUPABASE_NOT_CONNECTED', 'Supabase aún no está conectado a NUGA Console API.')
@@ -692,7 +756,6 @@ export function createApp(config: ServerConfig, dependencies: AppDependencies = 
   // fixtures while keeping every external integration fail-closed.
   [
     `${API_PREFIX}/wisp/towers`,
-    `${API_PREFIX}/wisp/routers`,
     `${API_PREFIX}/wisp/links`,
     `${API_PREFIX}/wisp/incidents`,
     `${API_PREFIX}/marketing/media-assets`,
