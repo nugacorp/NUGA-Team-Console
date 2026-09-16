@@ -1,13 +1,22 @@
 import express from 'express';
 import { createApp } from './app';
 import { loadServerConfig } from './config';
+import { MikroMcpReadOnlyAdapter } from './mikroMcpReadOnlyAdapter';
 import { createMikrotikControlPlaneRouter } from './mikrotikControlPlaneRouter';
 
 const config = loadServerConfig();
-const coreApp = createApp(config);
+const mikroMcpAdapter = config.mikroMcpReadOnlyEnabled === true
+  ? new MikroMcpReadOnlyAdapter({
+      endpoint: config.mikroMcpUrl ?? 'http://127.0.0.1:3000/mcp',
+      token: config.mikroMcpToken ?? '',
+      timeoutMs: 8_000,
+      maxResponseBytes: 1_048_576
+    })
+  : null;
+const coreApp = createApp(config, { mikroMcpAdapter: mikroMcpAdapter ?? undefined });
 const app = express();
 
-app.use('/api/v1/wisp', createMikrotikControlPlaneRouter(config));
+app.use('/api/v1/wisp', createMikrotikControlPlaneRouter(config, { mikroMcpAdapter }));
 app.use(coreApp);
 
 const server = app.listen(config.port, config.host, () => {
