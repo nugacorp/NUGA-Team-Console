@@ -7,6 +7,7 @@ import {
   isAllowedOrigin,
   validateModeHeader
 } from './contracts';
+import { MikroMcpReadOnlyError } from './mikroMcpReadOnlyAdapter';
 import {
   buildMikroTikRouterEnrollmentPlan,
   buildMikroTikTechnicalChangePlan,
@@ -15,6 +16,19 @@ import {
   MikroTikRouterEnrollmentPlanInput,
   MikroTikTechnicalChangePlanInput
 } from '../src/networkControl';
+
+export interface MikroMcpDiagnosticsReader {
+  listRouters(tags?: string[]): Promise<Record<string, unknown>[]>;
+  checkRouterHealth(routerId: string): Promise<Record<string, unknown>>;
+  getSystemStatus(routerId: string): Promise<Record<string, unknown>>;
+  listInterfaces(routerId: string): Promise<Record<string, unknown>[]>;
+  listRoutes(routerId: string): Promise<Record<string, unknown>[]>;
+  getRouterDiagnostics(routerId: string): Promise<unknown>;
+}
+
+export interface MikroTikControlPlaneDependencies {
+  mikroMcpAdapter?: MikroMcpDiagnosticsReader | null;
+}
 
 function requestGuard(config: ServerConfig) {
   return (request: Request, response: Response, next: NextFunction) => {
@@ -70,14 +84,61 @@ function planError(error: unknown, response: Response, code: string) {
   return false;
 }
 
-export function createMikrotikControlPlaneRouter(config: ServerConfig) {
+export function createMikrotikControlPlaneRouter(
+  config: ServerConfig,
+  dependencies: MikroTikControlPlaneDependencies = {}
+) {
   const router = express.Router();
   const requireRequest = requestGuard(config);
   const requireCsrf = csrfGuard(config);
+  const mikroMcpAdapter = dependencies.mikroMcpAdapter ?? null;
+
+  const productionRead = (
+    operation: (adapter: MikroMcpDiagnosticsReader) => Promise<unknown>
+  ) => async (_request: Request, response: Response) => {
+    if (!mikroMcpAdapter) {
+      response.status(503).json(apiError(
+        'MIKROMCP_NOT_CONNECTED',
+        'MikroMCP de producción todavía no está conectado.'
+      ));
+      return;
+    }
+
+    try {
+      response.status(200).json(await operation(mikroMcpAdapter));
+    } catch (error) {
+      const denied = error instanceof MikroMcpReadOnlyError && error.code === 'DENIED';
+      response.status(denied ? 403 : 503).json(apiError(
+        denied ? 'MIKROMCP_SCOPE_DENIED' : 'MIKROMCP_READ_UNAVAILABLE',
+        denied
+          ? 'La identidad MikroMCP no autoriza esa lectura de producción.'
+          : 'No fue posible completar la lectura real de producción.'
+      ));
+    }
+  };
 
   router.get('/control-plane', requireRequest, (_request, response) => {
     response.status(200).json(MIKROTIK_CONTROL_PLANE_POLICY);
   });
+
+  router.get('/inventory', requireRequest,
+    productionRead(adapter => adapter.listRouters())
+  );
+  router.get('/routers/:routerId/health', requireRequest, (request, response) =>
+    productionRead(adapter => adapter.checkRouterHealth(request.params.routerId))(request, response)
+  );
+  router.get('/routers/:routerId/system', requireRequest, (request, response) =>
+    productionRead(adapter => adapter.getSystemStatus(request.params.routerId))(request, response)
+  );
+  router.get('/routers/:routerId/interfaces', requireRequest, (request, response) =>
+    productionRead(adapter => adapter.listInterfaces(request.params.routerId))(request, response)
+  );
+  router.get('/routers/:routerId/routes', requireRequest, (request, response) =>
+    productionRead(adapter => adapter.listRoutes(request.params.routerId))(request, response)
+  );
+  router.get('/routers/:routerId/diagnostics', requireRequest, (request, response) =>
+    productionRead(adapter => adapter.getRouterDiagnostics(request.params.routerId))(request, response)
+  );
 
   router.post(
     '/routers/enrollment/plan',
@@ -131,7 +192,7 @@ export function createMikrotikControlPlaneRouter(config: ServerConfig) {
       response.status(400).json(apiError('VALIDATION_ERROR', 'La solicitud no contiene JSON válido.'));
       return;
     }
-    response.status(500).json(apiError('CONTROL_PLANE_ERROR', 'No fue posible preparar el plan MikroTik.'));
+    response.status(500).json(apiError('CONTROL_PLANE_ERROR', 'No fue posible completar la operación MikroTik.'));
   });
 
   return router;
