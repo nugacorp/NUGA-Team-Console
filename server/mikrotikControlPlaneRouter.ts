@@ -148,6 +148,9 @@ export function createMikrotikControlPlaneRouter(
     (request, response) => {
       try {
         const body = request.body as Partial<MikroTikRouterEnrollmentPlanInput>;
+        if (typeof body.isEdgeRouter !== 'boolean') {
+          throw new MikroTikControlPlaneValidationError('isEdgeRouter debe ser booleano.');
+        }
         const plan = buildMikroTikRouterEnrollmentPlan({
           routerId: typeof body.routerId === 'string' ? body.routerId.trim() : '',
           displayName: typeof body.displayName === 'string' ? body.displayName.trim() : '',
@@ -156,7 +159,7 @@ export function createMikrotikControlPlaneRouter(
           managementInterface: typeof body.managementInterface === 'string'
             ? body.managementInterface.trim()
             : undefined,
-          isEdgeRouter: body.isEdgeRouter === true
+          isEdgeRouter: body.isEdgeRouter
         });
         response.status(200).json(plan);
       } catch (error) {
