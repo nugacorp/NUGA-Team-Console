@@ -6,7 +6,7 @@ import type { ServerConfig } from '../../server/config';
 import { createMikrotikControlPlaneRouter } from '../../server/mikrotikControlPlaneRouter';
 import {
   buildMikroTikRouterEnrollmentPlan,
-  buildMikroTikServiceActionPlan,
+  buildMikroTikTechnicalChangePlan,
   MIKROTIK_CONTROL_PLANE_POLICY,
   MikroTikControlPlaneValidationError
 } from '../networkControl';
@@ -52,14 +52,22 @@ async function startRouter() {
   return `http://127.0.0.1:${address.port}`;
 }
 
-describe('MikroTik control plane', () => {
-  it('uses a private edge path, MikroMCP transport and keeps execution disabled', () => {
+describe('MikroTik technical control plane', () => {
+  it('keeps CRM and subscriber lifecycle explicitly outside its scope', () => {
     expect(MIKROTIK_CONTROL_PLANE_POLICY.architecture).toMatchObject({
       managementPath: 'single-edge-private-overlay',
       routerTransport: 'mikromcp',
       directPublicRouterAccess: false,
       credentialsInBrowser: false,
-      deterministicAutomation: true
+      aiRole: 'technical_advisory'
+    });
+    expect(MIKROTIK_CONTROL_PLANE_POLICY.productBoundary).toEqual({
+      crm: false,
+      billing: false,
+      subscriberLifecycle: false,
+      commercialSuspension: false,
+      paymentCollection: false,
+      technicalOperations: true
     });
     expect(MIKROTIK_CONTROL_PLANE_POLICY.execution).toMatchObject({
       enabled: false,
@@ -67,22 +75,21 @@ describe('MikroTik control plane', () => {
       humanApprovalRequired: true,
       rollbackRequired: true
     });
-    expect(MIKROTIK_CONTROL_PLANE_POLICY.supportedConnectionTypes.map(item => item.type)).toEqual([
-      'pppoe', 'static_ip', 'queue', 'hotspot', 'address_list'
-    ]);
-    expect(MIKROTIK_CONTROL_PLANE_POLICY.scheduledAutomationTemplates).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'router-health-report', mode: 'read_only', executionEnabled: true }),
-      expect.objectContaining({ id: 'router-backup', mode: 'future_write', executionEnabled: false })
+    expect(MIKROTIK_CONTROL_PLANE_POLICY.technicalCapabilities).toEqual(expect.arrayContaining([
+      'health',
+      'routing_diagnostics',
+      'firewall_audit',
+      'queue_diagnostics',
+      'maintenance_planning'
     ]));
   });
 
-  it('prepares private router enrollment without credentials or RouterOS mutation', () => {
+  it('prepares private router enrollment without commercial service metadata', () => {
     const plan = buildMikroTikRouterEnrollmentPlan({
       routerId: 'edge-01',
       displayName: 'Router de Borde',
       privateHost: '10.147.20.1',
       routerOsMajor: '7',
-      defaultConnectionType: 'address_list',
       managementInterface: 'mgmt-vlan',
       isEdgeRouter: true
     });
@@ -96,7 +103,7 @@ describe('MikroTik control plane', () => {
       credentialsRequiredInPlan: false,
       executionAllowed: false
     });
-    expect(plan.proposedEffects.join(' ')).not.toMatch(/password|secret|ssh/i);
+    expect(JSON.stringify(plan)).not.toMatch(/billing|payment|suspend|reactivate/i);
   });
 
   it('rejects public router management addresses', () => {
@@ -105,24 +112,21 @@ describe('MikroTik control plane', () => {
       displayName: 'Router de Borde',
       privateHost: '8.8.8.8',
       routerOsMajor: '7',
-      defaultConnectionType: 'address_list',
       isEdgeRouter: true
     })).toThrow(MikroTikControlPlaneValidationError);
   });
 
-  it('builds deterministic, non-executable service plans with rollback', () => {
-    const plan = buildMikroTikServiceActionPlan({
+  it('builds deterministic non-executable technical change plans with rollback', () => {
+    const input = {
       routerId: 'core-01',
-      serviceIdentifier: 'cliente-507',
-      connectionType: 'pppoe',
-      action: 'suspend'
-    });
+      category: 'routing' as const,
+      objective: 'Corregir una ruta de respaldo degradada'
+    };
+    const plan = buildMikroTikTechnicalChangePlan(input);
 
     expect(plan).toMatchObject({
       routerId: 'core-01',
-      serviceIdentifier: 'cliente-507',
-      connectionType: 'pppoe',
-      action: 'suspend',
+      category: 'routing',
       risk: 'high',
       requiresDryRun: true,
       requiresHumanApproval: true,
@@ -132,24 +136,24 @@ describe('MikroTik control plane', () => {
     expect(plan.evidence.length).toBeGreaterThan(0);
     expect(plan.validation.length).toBeGreaterThan(0);
     expect(plan.rollback.length).toBeGreaterThan(0);
-    expect(buildMikroTikServiceActionPlan({
-      routerId: 'core-01',
-      serviceIdentifier: 'cliente-507',
-      connectionType: 'pppoe',
-      action: 'suspend'
-    }).id).toBe(plan.id);
+    expect(buildMikroTikTechnicalChangePlan(input).id).toBe(plan.id);
   });
 
-  it('rejects unsafe identifiers before producing a plan', () => {
-    expect(() => buildMikroTikServiceActionPlan({
+  it('rejects unsafe technical plan identifiers and objectives', () => {
+    expect(() => buildMikroTikTechnicalChangePlan({
       routerId: 'core-01; /system reboot',
-      serviceIdentifier: 'cliente-507',
-      connectionType: 'pppoe',
-      action: 'suspend'
+      category: 'system',
+      objective: 'Revisar recursos del router'
+    })).toThrow(MikroTikControlPlaneValidationError);
+
+    expect(() => buildMikroTikTechnicalChangePlan({
+      routerId: 'core-01',
+      category: 'system',
+      objective: '/system reboot\n:delay 1'
     })).toThrow(MikroTikControlPlaneValidationError);
   });
 
-  it('requires owner session and CSRF before planning through the API', async () => {
+  it('requires owner session and CSRF for technical planning API', async () => {
     const baseUrl = await startRouter();
 
     const unauthorized = await fetch(`${baseUrl}/api/v1/wisp/control-plane`, {
@@ -164,9 +168,12 @@ describe('MikroTik control plane', () => {
       headers: { cookie, 'x-nuga-mode': 'staging' }
     });
     expect(policy.status).toBe(200);
-    await expect(policy.json()).resolves.toMatchObject({ execution: { enabled: false } });
+    await expect(policy.json()).resolves.toMatchObject({
+      productBoundary: { crm: false, billing: false, technicalOperations: true },
+      execution: { enabled: false }
+    });
 
-    const denied = await fetch(`${baseUrl}/api/v1/wisp/service-actions/plan`, {
+    const denied = await fetch(`${baseUrl}/api/v1/wisp/technical-changes/plan`, {
       method: 'POST',
       headers: {
         cookie,
@@ -176,9 +183,8 @@ describe('MikroTik control plane', () => {
       },
       body: JSON.stringify({
         routerId: 'core-01',
-        serviceIdentifier: 'cliente-507',
-        connectionType: 'address_list',
-        action: 'suspend'
+        category: 'routing',
+        objective: 'Revisar ruta de respaldo degradada'
       })
     });
     expect(denied.status).toBe(403);
@@ -197,7 +203,6 @@ describe('MikroTik control plane', () => {
         displayName: 'Router de Borde',
         privateHost: '192.168.88.1',
         routerOsMajor: '7',
-        defaultConnectionType: 'address_list',
         isEdgeRouter: true
       })
     });
@@ -208,7 +213,7 @@ describe('MikroTik control plane', () => {
       isEdgeRouter: true
     });
 
-    const accepted = await fetch(`${baseUrl}/api/v1/wisp/service-actions/plan`, {
+    const accepted = await fetch(`${baseUrl}/api/v1/wisp/technical-changes/plan`, {
       method: 'POST',
       headers: {
         cookie,
@@ -219,16 +224,15 @@ describe('MikroTik control plane', () => {
       },
       body: JSON.stringify({
         routerId: 'core-01',
-        serviceIdentifier: 'cliente-507',
-        connectionType: 'address_list',
-        action: 'suspend'
+        category: 'firewall',
+        objective: 'Auditar una regla con alcance inesperado'
       })
     });
     expect(accepted.status).toBe(200);
     await expect(accepted.json()).resolves.toMatchObject({
       executionAllowed: false,
       requiresHumanApproval: true,
-      action: 'suspend'
+      category: 'firewall'
     });
   });
 });

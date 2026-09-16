@@ -1,24 +1,41 @@
-export type MikroTikServiceConnectionType =
-  | 'pppoe'
-  | 'static_ip'
-  | 'queue'
-  | 'hotspot'
-  | 'address_list';
-
-export type MikroTikServiceAction = 'suspend' | 'reactivate';
 export type RouterOsMajor = '6' | '7';
+export type MikroTikTechnicalChangeCategory =
+  | 'routing'
+  | 'firewall'
+  | 'queues'
+  | 'interfaces'
+  | 'system';
+
+export type MikroTikTechnicalCapability =
+  | 'inventory'
+  | 'health'
+  | 'interfaces'
+  | 'routing_diagnostics'
+  | 'firewall_audit'
+  | 'queue_diagnostics'
+  | 'configuration_diff'
+  | 'maintenance_planning'
+  | 'backup_planning';
 
 export interface MikroTikControlPlanePolicy {
-  version: 1;
+  version: 2;
   architecture: {
     managementPath: 'single-edge-private-overlay';
     routerTransport: 'mikromcp';
     directPublicRouterAccess: false;
     credentialsInBrowser: false;
-    aiRole: 'advisory';
+    aiRole: 'technical_advisory';
     deterministicAutomation: true;
   };
-  workflow: Array<'observe' | 'plan' | 'simulate' | 'approve' | 'execute' | 'verify' | 'rollback'>;
+  productBoundary: {
+    crm: false;
+    billing: false;
+    subscriberLifecycle: false;
+    commercialSuspension: false;
+    paymentCollection: false;
+    technicalOperations: true;
+  };
+  workflow: Array<'observe' | 'diagnose' | 'plan' | 'simulate' | 'approve' | 'execute' | 'verify' | 'rollback'>;
   execution: {
     enabled: false;
     dryRunRequired: true;
@@ -26,13 +43,9 @@ export interface MikroTikControlPlanePolicy {
     rollbackRequired: true;
     reason: string;
   };
-  supportedConnectionTypes: Array<{
-    type: MikroTikServiceConnectionType;
-    suspendEffect: string;
-    reactivateEffect: string;
-  }>;
+  technicalCapabilities: MikroTikTechnicalCapability[];
   scheduledAutomationTemplates: Array<{
-    id: 'router-health-report' | 'node-health-check' | 'router-backup';
+    id: 'router-health-report' | 'node-health-check' | 'configuration-drift-report' | 'router-backup';
     mode: 'read_only' | 'future_write';
     purpose: string;
     executionEnabled: boolean;
@@ -45,7 +58,6 @@ export interface MikroTikRouterEnrollmentPlanInput {
   displayName: string;
   privateHost: string;
   routerOsMajor: RouterOsMajor;
-  defaultConnectionType: MikroTikServiceConnectionType;
   managementInterface?: string;
   isEdgeRouter: boolean;
 }
@@ -56,7 +68,6 @@ export interface MikroTikRouterEnrollmentPlan {
   displayName: string;
   privateHost: string;
   routerOsMajor: RouterOsMajor;
-  defaultConnectionType: MikroTikServiceConnectionType;
   managementInterface?: string;
   isEdgeRouter: boolean;
   scope: string;
@@ -71,21 +82,19 @@ export interface MikroTikRouterEnrollmentPlan {
   blockedReason: string;
 }
 
-export interface MikroTikServiceActionPlanInput {
+export interface MikroTikTechnicalChangePlanInput {
   routerId: string;
-  serviceIdentifier: string;
-  connectionType: MikroTikServiceConnectionType;
-  action: MikroTikServiceAction;
+  category: MikroTikTechnicalChangeCategory;
+  objective: string;
 }
 
-export interface MikroTikServiceActionPlan {
+export interface MikroTikTechnicalChangePlan {
   id: string;
   routerId: string;
-  serviceIdentifier: string;
-  connectionType: MikroTikServiceConnectionType;
-  action: MikroTikServiceAction;
+  category: MikroTikTechnicalChangeCategory;
+  objective: string;
   scope: string;
-  risk: 'medium' | 'high';
+  risk: 'high';
   evidence: string[];
   proposedEffects: string[];
   validation: string[];
@@ -98,15 +107,15 @@ export interface MikroTikServiceActionPlan {
 }
 
 const ROUTER_ID_PATTERN = /^[A-Za-z0-9._-]{1,96}$/;
-const SERVICE_ID_PATTERN = /^[A-Za-z0-9._:@/+-]{1,128}$/;
 const DISPLAY_NAME_PATTERN = /^[\p{L}\p{N} ._()-]{1,120}$/u;
 const INTERFACE_PATTERN = /^[A-Za-z0-9._:/+-]{1,96}$/;
-const CONNECTION_TYPES = new Set<MikroTikServiceConnectionType>([
-  'pppoe',
-  'static_ip',
-  'queue',
-  'hotspot',
-  'address_list'
+const OBJECTIVE_PATTERN = /^[\p{L}\p{N} .,:;_()\-/+]{8,240}$/u;
+const TECHNICAL_CHANGE_CATEGORIES = new Set<MikroTikTechnicalChangeCategory>([
+  'routing',
+  'firewall',
+  'queues',
+  'interfaces',
+  'system'
 ]);
 
 export class MikroTikControlPlaneValidationError extends Error {
@@ -117,16 +126,24 @@ export class MikroTikControlPlaneValidationError extends Error {
 }
 
 export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
-  version: 1,
+  version: 2,
   architecture: {
     managementPath: 'single-edge-private-overlay',
     routerTransport: 'mikromcp',
     directPublicRouterAccess: false,
     credentialsInBrowser: false,
-    aiRole: 'advisory',
+    aiRole: 'technical_advisory',
     deterministicAutomation: true
   },
-  workflow: ['observe', 'plan', 'simulate', 'approve', 'execute', 'verify', 'rollback'],
+  productBoundary: {
+    crm: false,
+    billing: false,
+    subscriberLifecycle: false,
+    commercialSuspension: false,
+    paymentCollection: false,
+    technicalOperations: true
+  },
+  workflow: ['observe', 'diagnose', 'plan', 'simulate', 'approve', 'execute', 'verify', 'rollback'],
   execution: {
     enabled: false,
     dryRunRequired: true,
@@ -134,32 +151,16 @@ export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
     rollbackRequired: true,
     reason: 'Las operaciones RouterOS reales permanecen bloqueadas hasta una fase de activación expresamente autorizada.'
   },
-  supportedConnectionTypes: [
-    {
-      type: 'pppoe',
-      suspendEffect: 'Deshabilitar la identidad PPPoE del servicio sin modificar perfiles globales.',
-      reactivateEffect: 'Rehabilitar la identidad PPPoE del servicio y verificar que pueda restablecer sesión.'
-    },
-    {
-      type: 'static_ip',
-      suspendEffect: 'Aplicar el estado de corte a la IP del servicio mediante una lista de control, conservando su política de ancho de banda.',
-      reactivateEffect: 'Retirar la IP del estado de corte y validar tráfico sin alterar su simple queue.'
-    },
-    {
-      type: 'queue',
-      suspendEffect: 'Aplicar el estado suspendido únicamente a la simple queue vinculada al servicio.',
-      reactivateEffect: 'Restaurar la simple queue del servicio a su estado operativo previo.'
-    },
-    {
-      type: 'hotspot',
-      suspendEffect: 'Deshabilitar únicamente el usuario Hotspot vinculado al servicio.',
-      reactivateEffect: 'Rehabilitar el usuario Hotspot y comprobar autenticación.'
-    },
-    {
-      type: 'address_list',
-      suspendEffect: 'Agregar el identificador del servicio a la lista de corte administrada.',
-      reactivateEffect: 'Retirar el identificador del servicio de la lista de corte administrada.'
-    }
+  technicalCapabilities: [
+    'inventory',
+    'health',
+    'interfaces',
+    'routing_diagnostics',
+    'firewall_audit',
+    'queue_diagnostics',
+    'configuration_diff',
+    'maintenance_planning',
+    'backup_planning'
   ],
   scheduledAutomationTemplates: [
     {
@@ -175,9 +176,15 @@ export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
       executionEnabled: true
     },
     {
+      id: 'configuration-drift-report',
+      mode: 'read_only',
+      purpose: 'Comparar el estado técnico observado con una línea base aprobada y reportar desviaciones.',
+      executionEnabled: true
+    },
+    {
       id: 'router-backup',
       mode: 'future_write',
-      purpose: 'Preparar una propuesta de respaldo antes de cambios de riesgo; la creación real del backup sigue bloqueada.',
+      purpose: 'Preparar una propuesta de respaldo antes de cambios técnicos de riesgo; la creación real del backup sigue bloqueada.',
       executionEnabled: false
     }
   ],
@@ -186,17 +193,10 @@ export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
     'Los routers administrados deben ser alcanzables por direcciones privadas desde ese camino.',
     'MikroMCP es el único puente autorizado entre NUGA Console API y RouterOS.',
     'No se permiten credenciales RouterOS en VITE_*, localStorage, navegador, logs o repositorio.',
-    'Toda escritura futura debe producir evidencia, alcance, riesgo, validación y rollback antes de ejecutar.'
+    'Toda escritura técnica futura debe producir evidencia, alcance, riesgo, validación y rollback antes de ejecutar.',
+    'Estados comerciales, facturación, pagos, suspensión y reactivación de clientes pertenecen al CRM/NugaCore y quedan fuera de este control plane.'
   ]
 };
-
-function effectFor(connectionType: MikroTikServiceConnectionType, action: MikroTikServiceAction): string {
-  const definition = MIKROTIK_CONTROL_PLANE_POLICY.supportedConnectionTypes.find(
-    candidate => candidate.type === connectionType
-  );
-  if (!definition) throw new MikroTikControlPlaneValidationError('Tipo de conexión no soportado.');
-  return action === 'suspend' ? definition.suspendEffect : definition.reactivateEffect;
-}
 
 function stableId(prefix: string, raw: string): string {
   let hash = 2166136261;
@@ -205,12 +205,6 @@ function stableId(prefix: string, raw: string): string {
     hash = Math.imul(hash, 16777619);
   }
   return `${prefix}-${(hash >>> 0).toString(16).padStart(8, '0')}`;
-}
-
-function assertConnectionType(value: MikroTikServiceConnectionType): void {
-  if (!CONNECTION_TYPES.has(value)) {
-    throw new MikroTikControlPlaneValidationError('Tipo de conexión no soportado.');
-  }
 }
 
 function isPrivateIpv4(value: string): boolean {
@@ -248,7 +242,6 @@ export function buildMikroTikRouterEnrollmentPlan(
   if (input.routerOsMajor !== '6' && input.routerOsMajor !== '7') {
     throw new MikroTikControlPlaneValidationError('Versión mayor de RouterOS no soportada.');
   }
-  assertConnectionType(input.defaultConnectionType);
   if (input.managementInterface && !INTERFACE_PATTERN.test(input.managementInterface)) {
     throw new MikroTikControlPlaneValidationError('Interfaz de gestión inválida.');
   }
@@ -257,7 +250,6 @@ export function buildMikroTikRouterEnrollmentPlan(
     input.routerId,
     input.privateHost,
     input.routerOsMajor,
-    input.defaultConnectionType,
     input.managementInterface ?? '',
     input.isEdgeRouter ? 'edge' : 'node'
   ].join(':');
@@ -268,31 +260,31 @@ export function buildMikroTikRouterEnrollmentPlan(
     displayName: input.displayName.trim(),
     privateHost: input.privateHost.trim(),
     routerOsMajor: input.routerOsMajor,
-    defaultConnectionType: input.defaultConnectionType,
     managementInterface: input.managementInterface?.trim() || undefined,
     isEdgeRouter: input.isEdgeRouter,
     scope: input.isEdgeRouter
-      ? `Registrar ${input.routerId} como router de borde del camino privado de gestión.`
-      : `Registrar ${input.routerId} como nodo alcanzable por IP privada desde el camino de gestión existente.`,
+      ? `Registrar ${input.routerId} como router de borde del camino privado de gestión técnica.`
+      : `Registrar ${input.routerId} como nodo técnico alcanzable por IP privada desde el camino de gestión existente.`,
     risk: 'high',
     evidence: [
       `Verificar alcance de ${input.privateHost} desde el gateway privado antes de cualquier aprovisionamiento.`,
       `Confirmar RouterOS ${input.routerOsMajor}.x mediante lectura de sistema.`,
       'Confirmar que no se usa una IP pública ni se almacenan credenciales RouterOS en el navegador o repositorio.',
       ...(input.managementInterface
-        ? [`Confirmar que ${input.managementInterface} es la interfaz prevista y que su uso no afecta clientes existentes.`]
+        ? [`Confirmar que ${input.managementInterface} es la interfaz prevista y que su uso no afecta tráfico existente.`]
         : [])
     ],
     proposedEffects: [
-      'Registrar únicamente metadatos de gestión y capacidades del router en el control plane.',
+      'Registrar únicamente metadatos técnicos de gestión y capacidades del router en el control plane.',
       'Mantener MikroMCP como único puente de acceso a RouterOS.',
-      'No crear usuarios, túneles, direcciones, bridges, VLANs, PPPoE servers ni perfiles en esta fase.'
+      'No crear usuarios, túneles, direcciones, bridges, VLANs, servidores ni perfiles en esta fase.',
+      'No crear ni modificar clientes, servicios comerciales, facturación, pagos o estados de suspensión.'
     ],
     validation: [
       'El router debe aparecer en el inventario MikroMCP y responder a lecturas de salud.',
       'La identidad y versión RouterOS observadas deben coincidir con el registro propuesto.',
       input.isEdgeRouter
-        ? 'El router de borde debe poder alcanzar por red privada a los nodos que se registren detrás de él.'
+        ? 'El router de borde debe poder alcanzar por red privada a los nodos técnicos que se registren detrás de él.'
         : 'El nodo debe ser alcanzable desde el camino privado sin exposición pública adicional.'
     ],
     rollback: [
@@ -306,49 +298,46 @@ export function buildMikroTikRouterEnrollmentPlan(
   };
 }
 
-export function buildMikroTikServiceActionPlan(
-  input: MikroTikServiceActionPlanInput
-): MikroTikServiceActionPlan {
+export function buildMikroTikTechnicalChangePlan(
+  input: MikroTikTechnicalChangePlanInput
+): MikroTikTechnicalChangePlan {
   if (!ROUTER_ID_PATTERN.test(input.routerId)) {
     throw new MikroTikControlPlaneValidationError('Identificador de router inválido.');
   }
-  if (!SERVICE_ID_PATTERN.test(input.serviceIdentifier)) {
-    throw new MikroTikControlPlaneValidationError('Identificador de servicio inválido.');
+  if (!TECHNICAL_CHANGE_CATEGORIES.has(input.category)) {
+    throw new MikroTikControlPlaneValidationError('Categoría de cambio técnico no soportada.');
   }
-  assertConnectionType(input.connectionType);
-  if (input.action !== 'suspend' && input.action !== 'reactivate') {
-    throw new MikroTikControlPlaneValidationError('Acción de servicio no soportada.');
+  const objective = input.objective.trim();
+  if (!OBJECTIVE_PATTERN.test(objective)) {
+    throw new MikroTikControlPlaneValidationError('Objetivo técnico inválido.');
   }
 
-  const proposedEffect = effectFor(input.connectionType, input.action);
-  const oppositeAction: MikroTikServiceAction = input.action === 'suspend' ? 'reactivate' : 'suspend';
-  const rollbackEffect = effectFor(input.connectionType, oppositeAction);
-  const raw = `${input.routerId}:${input.serviceIdentifier}:${input.connectionType}:${input.action}`;
-
+  const raw = `${input.routerId}:${input.category}:${objective}`;
   return {
-    id: stableId('mikrotik-plan', raw),
+    id: stableId('mikrotik-tech-plan', raw),
     routerId: input.routerId,
-    serviceIdentifier: input.serviceIdentifier,
-    connectionType: input.connectionType,
-    action: input.action,
-    scope: `Un solo servicio (${input.serviceIdentifier}) en el router ${input.routerId}. No incluye cambios globales, interfaces, rutas, firewall general ni otros clientes.`,
-    risk: input.action === 'suspend' ? 'high' : 'medium',
+    category: input.category,
+    objective,
+    scope: `Cambio técnico propuesto en ${input.category} para el router ${input.routerId}. No incluye CRM, facturación, pagos ni ciclo comercial de clientes.`,
+    risk: 'high',
     evidence: [
-      'Confirmar que el router existe en el registro MikroMCP y está saludable.',
-      `Confirmar que ${input.serviceIdentifier} identifica exactamente un servicio del tipo ${input.connectionType}.`,
-      'Capturar el estado previo del objeto RouterOS afectado antes de cualquier futura escritura.'
+      'Confirmar que el router existe en MikroMCP y está saludable.',
+      `Capturar el estado actual relacionado con ${input.category} antes de preparar cualquier futura escritura.`,
+      'Documentar dependencias, interfaces, rutas o políticas potencialmente afectadas.'
     ],
-    proposedEffects: [proposedEffect],
+    proposedEffects: [
+      `Preparar una propuesta técnica para: ${objective}.`,
+      'No generar ni ejecutar comandos RouterOS en esta fase.',
+      'No alterar estados comerciales ni administrativos de clientes.'
+    ],
     validation: [
-      'Ejecutar primero una simulación/dry-run cuando exista una herramienta de escritura autorizada.',
-      'Verificar que el cambio propuesto afecta exactamente un servicio.',
-      input.action === 'suspend'
-        ? 'Después de una futura ejecución, comprobar que el servicio queda bloqueado sin afectar otros clientes.'
-        : 'Después de una futura ejecución, comprobar que el servicio recupera conectividad y su política de velocidad.'
+      'Ejecutar primero dry-run cuando exista una herramienta de escritura expresamente autorizada.',
+      'Comparar estado previo y posterior contra el objetivo técnico.',
+      'Verificar salud, conectividad y ausencia de regresiones fuera del alcance aprobado.'
     ],
     rollback: [
-      rollbackEffect,
-      'Restaurar el estado previo capturado si la validación posterior no coincide con el resultado esperado.'
+      'Restaurar exactamente el estado técnico previo capturado antes de ejecutar.',
+      'Si la verificación falla, detener nuevas acciones y elevar el incidente con evidencia.'
     ],
     requiresDryRun: true,
     requiresHumanApproval: true,
