@@ -9,11 +9,11 @@ import {
 } from './contracts';
 import {
   buildMikroTikRouterEnrollmentPlan,
-  buildMikroTikServiceActionPlan,
+  buildMikroTikTechnicalChangePlan,
   MIKROTIK_CONTROL_PLANE_POLICY,
   MikroTikControlPlaneValidationError,
   MikroTikRouterEnrollmentPlanInput,
-  MikroTikServiceActionPlanInput
+  MikroTikTechnicalChangePlanInput
 } from '../src/networkControl';
 
 function requestGuard(config: ServerConfig) {
@@ -92,7 +92,6 @@ export function createMikrotikControlPlaneRouter(config: ServerConfig) {
           displayName: typeof body.displayName === 'string' ? body.displayName.trim() : '',
           privateHost: typeof body.privateHost === 'string' ? body.privateHost.trim() : '',
           routerOsMajor: body.routerOsMajor as MikroTikRouterEnrollmentPlanInput['routerOsMajor'],
-          defaultConnectionType: body.defaultConnectionType as MikroTikRouterEnrollmentPlanInput['defaultConnectionType'],
           managementInterface: typeof body.managementInterface === 'string'
             ? body.managementInterface.trim()
             : undefined,
@@ -107,24 +106,21 @@ export function createMikrotikControlPlaneRouter(config: ServerConfig) {
   );
 
   router.post(
-    '/service-actions/plan',
+    '/technical-changes/plan',
     express.json({ limit: '32kb', strict: true }),
     requireRequest,
     requireCsrf,
     (request, response) => {
       try {
-        const body = request.body as Partial<MikroTikServiceActionPlanInput>;
-        const plan = buildMikroTikServiceActionPlan({
+        const body = request.body as Partial<MikroTikTechnicalChangePlanInput>;
+        const plan = buildMikroTikTechnicalChangePlan({
           routerId: typeof body.routerId === 'string' ? body.routerId.trim() : '',
-          serviceIdentifier: typeof body.serviceIdentifier === 'string'
-            ? body.serviceIdentifier.trim()
-            : '',
-          connectionType: body.connectionType as MikroTikServiceActionPlanInput['connectionType'],
-          action: body.action as MikroTikServiceActionPlanInput['action']
+          category: body.category as MikroTikTechnicalChangePlanInput['category'],
+          objective: typeof body.objective === 'string' ? body.objective.trim() : ''
         });
         response.status(200).json(plan);
       } catch (error) {
-        if (planError(error, response, 'INVALID_MIKROTIK_SERVICE_PLAN')) return;
+        if (planError(error, response, 'INVALID_MIKROTIK_TECHNICAL_PLAN')) return;
         throw error;
       }
     }
