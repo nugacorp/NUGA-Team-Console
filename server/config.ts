@@ -11,6 +11,9 @@ export interface ServerConfig {
   hermesReadOnlyEnabled: boolean;
   hermesBinary: string;
   hermesBoards: string[];
+  mikroMcpReadOnlyEnabled?: boolean;
+  mikroMcpUrl?: string;
+  mikroMcpToken?: string;
   supabaseEnabled: boolean;
   supabaseUrl: string;
   supabaseSecretKey: string;
@@ -69,6 +72,30 @@ function parseOrigin(value: string | undefined): string {
   return url.origin;
 }
 
+function parseMikroMcpUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new ServerConfigurationError('NUGA_MIKROMCP_URL debe ser una URL absoluta válida.');
+  }
+
+  const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
+    throw new ServerConfigurationError(
+      'NUGA_MIKROMCP_URL debe usar HTTPS o HTTP exclusivamente sobre loopback.'
+    );
+  }
+  if (url.username || url.password) {
+    throw new ServerConfigurationError('NUGA_MIKROMCP_URL no debe incluir credenciales.');
+  }
+  if (url.pathname !== '/mcp') {
+    throw new ServerConfigurationError('NUGA_MIKROMCP_URL debe apuntar al endpoint /mcp.');
+  }
+
+  return url.toString().replace(/\/$/, '');
+}
+
 export function loadServerConfig(
   environment: NodeJS.ProcessEnv = process.env
 ): ServerConfig {
@@ -99,6 +126,17 @@ export function loadServerConfig(
   if (hermesReadOnlyEnabled && !hermesBoards.length) {
     throw new ServerConfigurationError(
       'NUGA_HERMES_BOARDS es obligatorio cuando la lectura Hermes está habilitada.'
+    );
+  }
+
+  const mikroMcpReadOnlyEnabled = environment.NUGA_MIKROMCP_READ_ONLY_ENABLED === 'true';
+  const mikroMcpUrl = parseMikroMcpUrl(
+    environment.NUGA_MIKROMCP_URL?.trim() || 'http://127.0.0.1:3000/mcp'
+  );
+  const mikroMcpToken = environment.NUGA_MIKROMCP_TOKEN?.trim() ?? '';
+  if (mikroMcpReadOnlyEnabled && mikroMcpToken.length < 32) {
+    throw new ServerConfigurationError(
+      'NUGA_MIKROMCP_TOKEN debe existir y contener al menos 32 caracteres cuando MikroMCP está habilitado.'
     );
   }
 
@@ -152,6 +190,9 @@ export function loadServerConfig(
     hermesReadOnlyEnabled,
     hermesBinary: environment.NUGA_HERMES_BINARY || '/home/ramiro/.local/bin/hermes',
     hermesBoards,
+    mikroMcpReadOnlyEnabled,
+    mikroMcpUrl,
+    mikroMcpToken,
     supabaseEnabled,
     supabaseUrl,
     supabaseSecretKey,
