@@ -143,6 +143,35 @@ describe('MikroTik technical control plane', () => {
     })).toThrow(/RouterOS 7/);
   });
 
+  it('rejects malformed IPv4 and IPv6 management hosts instead of coercing them', () => {
+    const malformedHosts = [
+      '10.0.0.',
+      '10.0..1',
+      '10.0.+1.1',
+      '10.0.0x1.1',
+      'fd',
+      'fd-not-an-address'
+    ];
+
+    for (const privateHost of malformedHosts) {
+      expect(() => buildMikroTikRouterEnrollmentPlan({
+        routerId: 'edge-01',
+        displayName: 'Router de Borde',
+        privateHost,
+        routerOsMajor: '7',
+        isEdgeRouter: true
+      })).toThrow(MikroTikControlPlaneValidationError);
+    }
+
+    expect(() => buildMikroTikRouterEnrollmentPlan({
+      routerId: 'edge-01',
+      displayName: 'Router de Borde',
+      privateHost: 'fd12:3456:789a::1',
+      routerOsMajor: '7',
+      isEdgeRouter: true
+    })).not.toThrow();
+  });
+
   it('builds deterministic technical change plans from current-state evidence without dry-run semantics', () => {
     const input = {
       routerId: 'core-01',
@@ -293,6 +322,48 @@ describe('MikroTik technical control plane', () => {
       requiresHumanApproval: true,
       requiresCurrentStateEvidence: true,
       category: 'firewall'
+    });
+  });
+
+  it('requires an explicit boolean isEdgeRouter in enrollment requests', async () => {
+    const baseUrl = await startRouter();
+    const { cookie, session } = sessionHeaders();
+    const headers = {
+      cookie,
+      origin: config.publicOrigin,
+      'content-type': 'application/json',
+      'x-nuga-mode': 'staging',
+      'x-csrf-token': session.csrfToken
+    };
+    const enrollment = {
+      routerId: 'edge-01',
+      displayName: 'Router de Borde',
+      privateHost: '10.147.20.1',
+      routerOsMajor: '7'
+    };
+
+    for (const isEdgeRouter of [undefined, 'false', 0, null]) {
+      const body = isEdgeRouter === undefined
+        ? enrollment
+        : { ...enrollment, isEdgeRouter };
+      const response = await fetch(`${baseUrl}/api/v1/wisp/routers/enrollment/plan`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+      expect(response.status).toBe(400);
+    }
+
+    const accepted = await fetch(`${baseUrl}/api/v1/wisp/routers/enrollment/plan`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...enrollment, isEdgeRouter: false })
+    });
+    expect(accepted.status).toBe(200);
+    await expect(accepted.json()).resolves.toMatchObject({
+      routerId: 'edge-01',
+      isEdgeRouter: false,
+      executionAllowed: false
     });
   });
 });
