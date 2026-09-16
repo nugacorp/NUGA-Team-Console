@@ -1,8 +1,14 @@
+import express from 'express';
 import { createApp } from './app';
 import { loadServerConfig } from './config';
+import { createMikrotikControlPlaneRouter } from './mikrotikControlPlaneRouter';
 
 const config = loadServerConfig();
-const app = createApp(config);
+const coreApp = createApp(config);
+const app = express();
+
+app.use('/api/v1/wisp', createMikrotikControlPlaneRouter(config));
+app.use(coreApp);
 
 const server = app.listen(config.port, config.host, () => {
   console.log(
