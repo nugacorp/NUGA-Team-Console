@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 export type RouterOsMajor = '6' | '7';
 export type MikroTikTechnicalChangeCategory =
   | 'routing'
@@ -215,11 +217,8 @@ function stableId(prefix: string, raw: string): string {
 }
 
 function isPrivateIpv4(value: string): boolean {
-  const parts = value.split('.');
-  if (parts.length !== 4) return false;
-  const octets = parts.map(part => Number(part));
-  if (octets.some(octet => !Number.isInteger(octet) || octet < 0 || octet > 255)) return false;
-  const [a, b] = octets;
+  if (isIP(value) !== 4) return false;
+  const [a, b] = value.split('.').map(part => Number(part));
   return a === 10 ||
     (a === 172 && b >= 16 && b <= 31) ||
     (a === 192 && b === 168) ||
@@ -230,8 +229,8 @@ function isPrivateIpv4(value: string): boolean {
 function isPrivateManagementHost(value: string): boolean {
   const host = value.trim().toLowerCase();
   if (isPrivateIpv4(host)) return true;
-  if (host === '::1' || host.startsWith('fc') || host.startsWith('fd')) return true;
-  return false;
+  if (host === '::1') return true;
+  return isIP(host) === 6 && (host.startsWith('fc') || host.startsWith('fd'));
 }
 
 export function buildMikroTikRouterEnrollmentPlan(
@@ -248,6 +247,9 @@ export function buildMikroTikRouterEnrollmentPlan(
   }
   if (input.routerOsMajor !== '7') {
     throw new MikroTikControlPlaneValidationError('El diagnóstico MikroMCP de producción requiere RouterOS 7.x por su REST API.');
+  }
+  if (typeof input.isEdgeRouter !== 'boolean') {
+    throw new MikroTikControlPlaneValidationError('isEdgeRouter debe ser booleano.');
   }
   if (input.managementInterface && !INTERFACE_PATTERN.test(input.managementInterface)) {
     throw new MikroTikControlPlaneValidationError('Interfaz de gestión inválida.');
