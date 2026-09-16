@@ -57,39 +57,42 @@ export const TEAM_PROFILES: AgentProfile[] = [
     department: 'Telecomunicaciones y Redes',
     avatar: '',
     status: 'idle',
-    lastActivity: 'Control plane técnico MikroTik disponible; ejecución RouterOS bloqueada',
+    lastActivity: 'Diagnóstico MikroTik preparado para producción real; escrituras RouterOS aún no habilitadas',
     model: 'Hermes',
     autonomyLevel: 'supervisado',
     requiresApproval: true,
     maxExecutionTimeMinutes: 20,
     defaultPriority: 'urgente',
     responsibilities: [
-      'Analizar la operación WISP y la salud de routers cuando MikroMCP esté conectado',
-      'Diagnosticar interfaces, routing, firewall, queues y degradaciones de red',
-      'Preparar propuestas de registro de routers por red privada',
+      'Leer inventario real de routers registrados en MikroMCP',
+      'Diagnosticar salud, CPU, memoria, interfaces y routing sobre equipos de producción',
+      'Detectar anomalías técnicas y entregar evidencia observable sin inventar estado',
       'Preparar planes técnicos de mantenimiento y cambios de red con evidencia, alcance, riesgo, validación y rollback'
     ],
     limits: [
       'No es un CRM y no administra facturación, pagos ni estados comerciales de clientes',
       'No suspende ni reactiva clientes por motivos comerciales o de cobranza',
-      'No ejecuta escrituras RouterOS en esta fase',
-      'No usa SSH directo ni direcciones públicas como camino de administración',
+      'No simula diagnósticos: cuando MikroMCP esté habilitado las lecturas provienen del equipo real',
+      'No ejecuta escrituras RouterOS hasta que una fase de escritura haya sido autorizada y habilitada',
+      'No usa SSH directo desde NUGA Team Console ni direcciones públicas como camino de administración',
       'No almacena credenciales RouterOS en navegador, VITE_*, logs ni repositorio',
-      'Toda futura ejecución técnica requiere dry-run, aprobación humana, verificación y rollback'
+      'Toda futura escritura técnica requiere evidencia del estado actual, aprobación humana, verificación y rollback'
     ],
-    skills: ['Redes', 'WISP', 'RouterOS', 'MikroMCP', 'Diagnóstico', 'Planeación segura de cambios'],
+    skills: ['Redes', 'WISP', 'RouterOS', 'MikroMCP', 'Diagnóstico de producción', 'Planeación segura de cambios'],
     allowedTools: [
       'read_task_board',
       'mikromcp_list_routers',
       'mikromcp_check_router_health',
       'mikromcp_get_system_status',
       'mikromcp_list_interfaces',
+      'mikromcp_list_routes',
+      'mikromcp_diagnose_router',
       'mikrotik_plan_router_enrollment',
       'mikrotik_plan_technical_change',
       'request_human_approval'
     ],
     stats: emptyStats(),
-    systemInstructions: 'Opera MikroTik como agente técnico: observar, diagnosticar y preparar cambios de red auditables mediante MikroMCP. CRM, facturación, pagos, suspensión y reactivación comercial de clientes pertenecen a NugaCore u otros sistemas especializados y están fuera de su alcance.'
+    systemInstructions: 'Opera MikroTik como agente técnico de producción: observar y diagnosticar datos reales mediante MikroMCP, correlacionar salud, interfaces y routing, y reportar anomalías con evidencia. No uses simulaciones para diagnóstico. CRM, facturación, pagos, suspensión y reactivación comercial de clientes pertenecen a NugaCore u otros sistemas especializados y están fuera de tu alcance.'
   },
   {
     id: 'marketing',
