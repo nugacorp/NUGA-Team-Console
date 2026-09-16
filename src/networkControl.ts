@@ -11,6 +11,7 @@ export type MikroTikTechnicalCapability =
   | 'health'
   | 'interfaces'
   | 'routing_diagnostics'
+  | 'anomaly_detection'
   | 'firewall_audit'
   | 'queue_diagnostics'
   | 'configuration_diff'
@@ -18,7 +19,7 @@ export type MikroTikTechnicalCapability =
   | 'backup_planning';
 
 export interface MikroTikControlPlanePolicy {
-  version: 2;
+  version: 3;
   architecture: {
     managementPath: 'single-edge-private-overlay';
     routerTransport: 'mikromcp';
@@ -26,6 +27,8 @@ export interface MikroTikControlPlanePolicy {
     credentialsInBrowser: false;
     aiRole: 'technical_advisory';
     deterministicAutomation: true;
+    productionDiagnostics: true;
+    simulationEnabled: false;
   };
   productBoundary: {
     crm: false;
@@ -35,18 +38,18 @@ export interface MikroTikControlPlanePolicy {
     paymentCollection: false;
     technicalOperations: true;
   };
-  workflow: Array<'observe' | 'diagnose' | 'plan' | 'simulate' | 'approve' | 'execute' | 'verify' | 'rollback'>;
+  workflow: Array<'observe' | 'diagnose' | 'plan' | 'approve' | 'execute' | 'verify' | 'rollback'>;
   execution: {
-    enabled: false;
-    dryRunRequired: true;
+    writesEnabled: false;
     humanApprovalRequired: true;
+    currentStateEvidenceRequired: true;
     rollbackRequired: true;
     reason: string;
   };
   technicalCapabilities: MikroTikTechnicalCapability[];
   scheduledAutomationTemplates: Array<{
     id: 'router-health-report' | 'node-health-check' | 'configuration-drift-report' | 'router-backup';
-    mode: 'read_only' | 'future_write';
+    mode: 'production_read' | 'future_write';
     purpose: string;
     executionEnabled: boolean;
   }>;
@@ -99,7 +102,7 @@ export interface MikroTikTechnicalChangePlan {
   proposedEffects: string[];
   validation: string[];
   rollback: string[];
-  requiresDryRun: true;
+  requiresCurrentStateEvidence: true;
   requiresHumanApproval: true;
   executionAllowed: false;
   executionBinding: null;
@@ -126,14 +129,16 @@ export class MikroTikControlPlaneValidationError extends Error {
 }
 
 export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
-  version: 2,
+  version: 3,
   architecture: {
     managementPath: 'single-edge-private-overlay',
     routerTransport: 'mikromcp',
     directPublicRouterAccess: false,
     credentialsInBrowser: false,
     aiRole: 'technical_advisory',
-    deterministicAutomation: true
+    deterministicAutomation: true,
+    productionDiagnostics: true,
+    simulationEnabled: false
   },
   productBoundary: {
     crm: false,
@@ -143,19 +148,20 @@ export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
     paymentCollection: false,
     technicalOperations: true
   },
-  workflow: ['observe', 'diagnose', 'plan', 'simulate', 'approve', 'execute', 'verify', 'rollback'],
+  workflow: ['observe', 'diagnose', 'plan', 'approve', 'execute', 'verify', 'rollback'],
   execution: {
-    enabled: false,
-    dryRunRequired: true,
+    writesEnabled: false,
     humanApprovalRequired: true,
+    currentStateEvidenceRequired: true,
     rollbackRequired: true,
-    reason: 'Las operaciones RouterOS reales permanecen bloqueadas hasta una fase de activación expresamente autorizada.'
+    reason: 'Los diagnósticos son lecturas reales de producción. Las escrituras RouterOS se habilitan solo en una fase técnica expresamente autorizada y con evidencia del estado actual, aprobación, verificación y rollback.'
   },
   technicalCapabilities: [
     'inventory',
     'health',
     'interfaces',
     'routing_diagnostics',
+    'anomaly_detection',
     'firewall_audit',
     'queue_diagnostics',
     'configuration_diff',
@@ -165,26 +171,26 @@ export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
   scheduledAutomationTemplates: [
     {
       id: 'router-health-report',
-      mode: 'read_only',
-      purpose: 'Recolectar salud, recursos e interfaces y generar un resumen periódico sin mutar RouterOS.',
+      mode: 'production_read',
+      purpose: 'Recolectar salud, recursos e interfaces reales y generar un resumen periódico sin mutar RouterOS.',
       executionEnabled: true
     },
     {
       id: 'node-health-check',
-      mode: 'read_only',
-      purpose: 'Verificar alcance y degradación de los routers registrados y elevar únicamente anomalías.',
+      mode: 'production_read',
+      purpose: 'Verificar alcance y degradación real de los routers registrados y elevar únicamente anomalías.',
       executionEnabled: true
     },
     {
       id: 'configuration-drift-report',
-      mode: 'read_only',
-      purpose: 'Comparar el estado técnico observado con una línea base aprobada y reportar desviaciones.',
+      mode: 'production_read',
+      purpose: 'Comparar el estado técnico real observado con una línea base aprobada y reportar desviaciones.',
       executionEnabled: true
     },
     {
       id: 'router-backup',
       mode: 'future_write',
-      purpose: 'Preparar una propuesta de respaldo antes de cambios técnicos de riesgo; la creación real del backup sigue bloqueada.',
+      purpose: 'Preparar una propuesta de respaldo antes de cambios técnicos de riesgo; la creación real del backup requiere una fase de escritura autorizada.',
       executionEnabled: false
     }
   ],
@@ -192,6 +198,7 @@ export const MIKROTIK_CONTROL_PLANE_POLICY: MikroTikControlPlanePolicy = {
     'Un único camino privado de gestión hacia el router de borde o gateway de administración.',
     'Los routers administrados deben ser alcanzables por direcciones privadas desde ese camino.',
     'MikroMCP es el único puente autorizado entre NUGA Console API y RouterOS.',
+    'Producción debe usar RouterOS 7 con api-ssl para las lecturas REST de MikroMCP.',
     'No se permiten credenciales RouterOS en VITE_*, localStorage, navegador, logs o repositorio.',
     'Toda escritura técnica futura debe producir evidencia, alcance, riesgo, validación y rollback antes de ejecutar.',
     'Estados comerciales, facturación, pagos, suspensión y reactivación de clientes pertenecen al CRM/NugaCore y quedan fuera de este control plane.'
@@ -239,8 +246,8 @@ export function buildMikroTikRouterEnrollmentPlan(
   if (!isPrivateManagementHost(input.privateHost)) {
     throw new MikroTikControlPlaneValidationError('El host de gestión debe ser una dirección IP privada o de overlay, nunca una IP pública.');
   }
-  if (input.routerOsMajor !== '6' && input.routerOsMajor !== '7') {
-    throw new MikroTikControlPlaneValidationError('Versión mayor de RouterOS no soportada.');
+  if (input.routerOsMajor !== '7') {
+    throw new MikroTikControlPlaneValidationError('El diagnóstico MikroMCP de producción requiere RouterOS 7.x por su REST API.');
   }
   if (input.managementInterface && !INTERFACE_PATTERN.test(input.managementInterface)) {
     throw new MikroTikControlPlaneValidationError('Interfaz de gestión inválida.');
@@ -267,8 +274,9 @@ export function buildMikroTikRouterEnrollmentPlan(
       : `Registrar ${input.routerId} como nodo técnico alcanzable por IP privada desde el camino de gestión existente.`,
     risk: 'high',
     evidence: [
-      `Verificar alcance de ${input.privateHost} desde el gateway privado antes de cualquier aprovisionamiento.`,
-      `Confirmar RouterOS ${input.routerOsMajor}.x mediante lectura de sistema.`,
+      `Verificar alcance de ${input.privateHost} desde el host MikroMCP de producción.`,
+      'Confirmar RouterOS 7.x mediante lectura real de sistema.',
+      'Confirmar api-ssl y restricción de origen al host de MikroMCP.',
       'Confirmar que no se usa una IP pública ni se almacenan credenciales RouterOS en el navegador o repositorio.',
       ...(input.managementInterface
         ? [`Confirmar que ${input.managementInterface} es la interfaz prevista y que su uso no afecta tráfico existente.`]
@@ -277,19 +285,19 @@ export function buildMikroTikRouterEnrollmentPlan(
     proposedEffects: [
       'Registrar únicamente metadatos técnicos de gestión y capacidades del router en el control plane.',
       'Mantener MikroMCP como único puente de acceso a RouterOS.',
-      'No crear usuarios, túneles, direcciones, bridges, VLANs, servidores ni perfiles en esta fase.',
+      'Usar el router real de producción para inventario y diagnóstico una vez activada la identidad MikroMCP.',
       'No crear ni modificar clientes, servicios comerciales, facturación, pagos o estados de suspensión.'
     ],
     validation: [
-      'El router debe aparecer en el inventario MikroMCP y responder a lecturas de salud.',
+      'El router debe aparecer en el inventario MikroMCP y responder a lecturas reales de salud.',
       'La identidad y versión RouterOS observadas deben coincidir con el registro propuesto.',
       input.isEdgeRouter
         ? 'El router de borde debe poder alcanzar por red privada a los nodos técnicos que se registren detrás de él.'
         : 'El nodo debe ser alcanzable desde el camino privado sin exposición pública adicional.'
     ],
     rollback: [
-      'Descartar el registro propuesto del control plane; esta fase no modifica RouterOS.',
-      'Si una futura activación falla, deshabilitar la integración antes de retirar cualquier identidad o túnel por un cambio separado y autorizado.'
+      'Retirar el registro del control plane y deshabilitar la identidad MikroMCP si la validación real falla.',
+      'No modificar la configuración de tráfico del router durante el rollback de esta fase de diagnóstico.'
     ],
     requiresHumanApproval: true,
     executionAllowed: false,
@@ -321,25 +329,25 @@ export function buildMikroTikTechnicalChangePlan(
     scope: `Cambio técnico propuesto en ${input.category} para el router ${input.routerId}. No incluye CRM, facturación, pagos ni ciclo comercial de clientes.`,
     risk: 'high',
     evidence: [
-      'Confirmar que el router existe en MikroMCP y está saludable.',
-      `Capturar el estado actual relacionado con ${input.category} antes de preparar cualquier futura escritura.`,
+      'Confirmar que el router existe en MikroMCP y está saludable en producción.',
+      `Capturar el estado real actual relacionado con ${input.category} antes de cualquier escritura.`,
       'Documentar dependencias, interfaces, rutas o políticas potencialmente afectadas.'
     ],
     proposedEffects: [
       `Preparar una propuesta técnica para: ${objective}.`,
-      'No generar ni ejecutar comandos RouterOS en esta fase.',
+      'La futura ejecución debe aplicarse al router real solamente después de aprobación explícita.',
       'No alterar estados comerciales ni administrativos de clientes.'
     ],
     validation: [
-      'Ejecutar primero dry-run cuando exista una herramienta de escritura expresamente autorizada.',
-      'Comparar estado previo y posterior contra el objetivo técnico.',
-      'Verificar salud, conectividad y ausencia de regresiones fuera del alcance aprobado.'
+      'Comparar el estado real previo y posterior contra el objetivo técnico.',
+      'Verificar salud, conectividad y ausencia de regresiones fuera del alcance aprobado.',
+      'Registrar evidencia del resultado real de producción.'
     ],
     rollback: [
       'Restaurar exactamente el estado técnico previo capturado antes de ejecutar.',
       'Si la verificación falla, detener nuevas acciones y elevar el incidente con evidencia.'
     ],
-    requiresDryRun: true,
+    requiresCurrentStateEvidence: true,
     requiresHumanApproval: true,
     executionAllowed: false,
     executionBinding: null,
