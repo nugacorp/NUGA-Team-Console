@@ -8,9 +8,11 @@ import {
   validateModeHeader
 } from './contracts';
 import {
+  buildMikroTikRouterEnrollmentPlan,
   buildMikroTikServiceActionPlan,
   MIKROTIK_CONTROL_PLANE_POLICY,
   MikroTikControlPlaneValidationError,
+  MikroTikRouterEnrollmentPlanInput,
   MikroTikServiceActionPlanInput
 } from '../src/networkControl';
 
@@ -60,6 +62,14 @@ function csrfGuard(config: ServerConfig) {
   };
 }
 
+function planError(error: unknown, response: Response, code: string) {
+  if (error instanceof MikroTikControlPlaneValidationError) {
+    response.status(400).json(apiError(code, error.message));
+    return true;
+  }
+  return false;
+}
+
 export function createMikrotikControlPlaneRouter(config: ServerConfig) {
   const router = express.Router();
   const requireRequest = requestGuard(config);
@@ -68,6 +78,33 @@ export function createMikrotikControlPlaneRouter(config: ServerConfig) {
   router.get('/control-plane', requireRequest, (_request, response) => {
     response.status(200).json(MIKROTIK_CONTROL_PLANE_POLICY);
   });
+
+  router.post(
+    '/routers/enrollment/plan',
+    express.json({ limit: '32kb', strict: true }),
+    requireRequest,
+    requireCsrf,
+    (request, response) => {
+      try {
+        const body = request.body as Partial<MikroTikRouterEnrollmentPlanInput>;
+        const plan = buildMikroTikRouterEnrollmentPlan({
+          routerId: typeof body.routerId === 'string' ? body.routerId.trim() : '',
+          displayName: typeof body.displayName === 'string' ? body.displayName.trim() : '',
+          privateHost: typeof body.privateHost === 'string' ? body.privateHost.trim() : '',
+          routerOsMajor: body.routerOsMajor as MikroTikRouterEnrollmentPlanInput['routerOsMajor'],
+          defaultConnectionType: body.defaultConnectionType as MikroTikRouterEnrollmentPlanInput['defaultConnectionType'],
+          managementInterface: typeof body.managementInterface === 'string'
+            ? body.managementInterface.trim()
+            : undefined,
+          isEdgeRouter: body.isEdgeRouter === true
+        });
+        response.status(200).json(plan);
+      } catch (error) {
+        if (planError(error, response, 'INVALID_MIKROTIK_ENROLLMENT_PLAN')) return;
+        throw error;
+      }
+    }
+  );
 
   router.post(
     '/service-actions/plan',
@@ -87,10 +124,7 @@ export function createMikrotikControlPlaneRouter(config: ServerConfig) {
         });
         response.status(200).json(plan);
       } catch (error) {
-        if (error instanceof MikroTikControlPlaneValidationError) {
-          response.status(400).json(apiError('INVALID_MIKROTIK_SERVICE_PLAN', error.message));
-          return;
-        }
+        if (planError(error, response, 'INVALID_MIKROTIK_SERVICE_PLAN')) return;
         throw error;
       }
     }
